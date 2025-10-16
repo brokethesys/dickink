@@ -15,10 +15,10 @@ class MapScreen extends StatelessWidget {
           // 🌊 Прокручиваемая карта (фон + путь + уровни)
           SingleChildScrollView(
             reverse: true,
-            physics: const BouncingScrollPhysics(),
+            physics: const ClampingScrollPhysics(),
             child: Stack(
               children: [
-                // 🖼️ Фон, который НЕ растягивается и повторяется по вертикали
+                // 🖼 Фон, который НЕ растягивается и повторяется по вертикали
                 Positioned.fill(
                   child: Image.asset(
                     'assets/images/bg_map2.png',
