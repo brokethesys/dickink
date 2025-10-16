@@ -21,8 +21,8 @@ class MapScreen extends StatelessWidget {
                 // 🖼️ Фон, который НЕ растягивается и повторяется по вертикали
                 Positioned.fill(
                   child: Image.asset(
-                    'assets/images/bg_map_tile.png',
-                    fit: BoxFit.none, // ❗️ не растягиваем
+                    'assets/images/bg_map2.png',
+                    fit: BoxFit.fitWidth, // ❗️ не растягиваем
                     repeat: ImageRepeat.repeatY, // 🔁 повторяем вверх
                     alignment: Alignment.bottomCenter, // ⚖️ выравниваем по центру
                     filterQuality: FilterQuality.high,
