@@ -11,7 +11,8 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen>
+    with SingleTickerProviderStateMixin {
   bool soundEnabled = true;
   bool musicEnabled = true;
   bool vibrationEnabled = true;
@@ -20,13 +21,28 @@ class _MapScreenState extends State<MapScreen> {
   int currentXP = 50;
   int coins = 120;
 
-  // Экспоненциальный рост опыта
+  late AnimationController _xpController;
+  late Animation<double> _xpAnimation;
+
   int get xpForNextLevel => (100 * pow(1.5, playerLevel - 1)).round();
 
   @override
   void initState() {
     super.initState();
+    _xpController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _xpAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _xpController, curve: Curves.easeOutCubic),
+    );
     _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    _xpController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSettings() async {
@@ -85,10 +101,9 @@ class _MapScreenState extends State<MapScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-
                           SwitchListTile(
                             title: const Text('Звук'),
-                            activeColor: Colors.orangeAccent,
+                            activeThumbColor: Colors.orangeAccent,
                             value: soundEnabled,
                             onChanged: (v) {
                               setState(() => soundEnabled = v);
@@ -98,7 +113,7 @@ class _MapScreenState extends State<MapScreen> {
                           ),
                           SwitchListTile(
                             title: const Text('Музыка'),
-                            activeColor: Colors.orangeAccent,
+                            activeThumbColor: Colors.orangeAccent,
                             value: musicEnabled,
                             onChanged: (v) {
                               setState(() => musicEnabled = v);
@@ -106,8 +121,9 @@ class _MapScreenState extends State<MapScreen> {
                               _saveSettings();
                             },
                           ),
-                          SwitchListTile(title: const Text('Вибрация при правильных ответах'),
-                            activeColor: Colors.orangeAccent,
+                          SwitchListTile(
+                            title: const Text('Вибрация при правильных ответах'),
+                            activeThumbColor: Colors.orangeAccent,
                             value: vibrationEnabled,
                             onChanged: (v) {
                               setState(() => vibrationEnabled = v);
@@ -115,18 +131,18 @@ class _MapScreenState extends State<MapScreen> {
                               _saveSettings();
                             },
                           ),
-
                           const Divider(),
-
                           ListTile(
-                            leading: const Icon(Icons.mail_outline, color: Colors.orangeAccent),
+                            leading: const Icon(Icons.mail_outline,
+                                color: Colors.orangeAccent),
                             title: const Text('Обратиться в поддержку'),
                             subtitle: const Text('support@quizgame.app'),
                             onTap: () {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Напиши нам на support@quizgame.app 💌'),
+                                  content:
+                                      Text('Напиши нам на support@quizgame.app 💌'),
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
@@ -154,43 +170,184 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  // 📍 центры уровней — синусоида + лёгкий шум
+  List<Offset> _calculateLevelCenters() {
+    const int totalLevels = 26;
+    const double amplitude = 120;
+    const double period = 250;
+    const double startY = 2000;
+    const double stepY = 150;
+    const double centerX = 200;
+
+    final rand = Random(42);
+
+    return List.generate(totalLevels, (i) {
+      final double y = startY - i * stepY;
+      final double x =
+          centerX + sin(y / period) * amplitude + rand.nextDouble() * 12 - 6;
+      return Offset(x, y);
+    });
+  }
+
+  List<Widget> _buildLevelNodes(BuildContext context) {
+    final centers = _calculateLevelCenters();
+    return List.generate(centers.length, (i) {
+      final c = centers[i];
+      return Positioned(
+        top: c.dy,
+        left: c.dx - 30,
+        child: LevelNode(
+          levelNumber: i + 1,
+          stars: (i + 1) % 4,
+          isCurrent: i + 1 == 22,
+          onTap: () {
+            setState(() {
+              currentXP += 40;
+              if (currentXP >= xpForNextLevel) {
+                currentXP -= xpForNextLevel;
+                playerLevel++;
+              }
+              _saveSettings();
+              _xpController.forward(from: 0);
+            });
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => QuizScreen(level: i + 1)),
+            );
+          },
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     const double mapHeight = 2200;
     final double xpProgress = currentXP / xpForNextLevel;
+    _xpController.value = xpProgress.clamp(0.0, 1.0);
+
+    final levelCenters = _calculateLevelCenters();
+    final levelNodes = _buildLevelNodes(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFF001B33),
       body: Stack(
         children: [
-          // 🖼 Фон
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/bg_map2.png',
-              fit: BoxFit.fitWidth,
-              repeat: ImageRepeat.repeatY,
-              alignment: Alignment.bottomCenter,
-              filterQuality: FilterQuality.high,
-            ),
-          ),
-
-          // 🌊 Прокручиваемая карта
           SingleChildScrollView(
             reverse: true,
             physics: const ClampingScrollPhysics(),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxHeight: mapHeight,
-                minHeight: mapHeight,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/images/new_bg_map.jpg',
+                    fit: BoxFit.fitWidth,
+                    repeat: ImageRepeat.repeatY,
+                    alignment: Alignment.bottomCenter,
+                    filterQuality: FilterQuality.high,
+                  ),
+                ),
+                SizedBox(
+                  height: mapHeight,
+                  child: CustomPaint(
+                    painter: MapPathPainter(levelCenters),
+                    child: Stack(children: levelNodes),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _topHUD(),
+        ],
+      ),
+    );
+  }
+
+  Widget _topHUD() {
+    const double barHeight = 46;
+    final xpRatio = currentXP / xpForNextLevel;
+
+    return Positioned(
+      top: 80,
+      left: 16,
+      right: 16,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Container(
+              height: barHeight,
+              decoration: BoxDecoration(
+                color: const Color.fromARGB(255, 0, 33, 38),
+                borderRadius: BorderRadius.circular(12),
+                border:
+                    Border.all(color: Colors.black.withOpacity(0.3), width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    offset: const Offset(0, 3),
+                    blurRadius: 6,
+                  ),
+                ],
               ),
               child: Stack(
                 children: [
-                  SizedBox(
-                    height: mapHeight,
-                    child: CustomPaint(
-                      painter: MapPathPainter(),
-                      child: Stack(
-                        children: _buildLevelNodes(context),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final progressWidth =
+                          constraints.maxWidth * xpRatio.clamp(0.0, 1.0);
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 600),
+                        width: progressWidth,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color.fromARGB(255, 0, 81, 103),
+                              Color.fromARGB(255, 0, 141, 184),
+                              Color.fromARGB(255, 2, 194, 227),
+                            ],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      );
+                    },
+                  ),
+                  Center(
+                    child: Text(
+                      '$currentXP / $xpForNextLevel',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        shadows: [Shadow(color: Colors.black, blurRadius: 4)],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 52,
+                      decoration: const BoxDecoration(
+                        color: Color.fromARGB(255, 7, 102, 131),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(10),
+                          bottomLeft: Radius.circular(10),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$playerLevel',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -198,108 +355,24 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           ),
-
-          // ❤️ Панель жизней
-          Positioned(
-            top: 40,
-            left: 0,
-            right: 0,
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    5,
-                    (_) => const Icon(Icons.favorite, color: Colors.redAccent, size: 22),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'ПОЛОН ЖИЗНИ',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(width: 14),
+          _squareButton(
+            icon: Icons.monetization_on,
+            color: Colors.amber.shade700,
+            label: coins.toString(),
+            onTap: () {},
           ),
-
-          // 🧭 Верхняя панель (XP + монеты + настройки)
-          Positioned(top: 40,
-            left: 16,
-            right: 16,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // 🔹 Прогресс-бар опыта
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Ур. $playerLevel',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: xpProgress.clamp(0.0, 1.0),
-                          minHeight: 10,
-                          backgroundColor: Colors.white24,
-                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.orangeAccent),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$currentXP / $xpForNextLevel XP',
-                        style: const TextStyle(color: Colors.white70, fontSize: 10),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(width: 10),
-
-                // 🪙 Монеты
-                _squareButton(
-                  icon: Icons.monetization_on,
-                  color: Colors.amberAccent,
-                  label: coins.toString(),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Это ваши монетки 💰'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(width: 8),
-
-                // ⚙️ Настройки
-                _squareButton(
-                  icon: Icons.settings,
-                  color: Colors.white,
-                  onTap: () => _openSettingsPanel(context),
-                ),
-              ],
-            ),
+          const SizedBox(width: 10),
+          _squareButton(
+            icon: Icons.settings,
+            color: const Color(0xFF333333),
+            onTap: () => _openSettingsPanel(context),
           ),
         ],
       ),
     );
   }
 
-  // 🔲 Виджет квадратного хитбокса
   Widget _squareButton({
     required IconData icon,
     Color? color,
@@ -309,24 +382,32 @@ class _MapScreenState extends State<MapScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 46,
-        height: 46,
+        width: 50,
+        height: 56,
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(8),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              spreadRadius: 1,
+              blurRadius: 6,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(icon, color: color ?? Colors.white, size: 26),
+            Icon(icon, color: color ?? Colors.grey.shade800, size: 28),
             if (label != null)
               Positioned(
-                bottom: 2,
+                bottom: 3,
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: Colors.white,
+                    color: Colors.grey.shade800,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -336,77 +417,44 @@ class _MapScreenState extends State<MapScreen> {
       ),
     );
   }
-
-  // 🎯 Генерация уровней
-  List<Widget> _buildLevelNodes(BuildContext context) {
-    const int totalLevels = 26;
-    const double amplitude = 120;
-    const double period = 250;
-    const double startY = 2000;
-    const double stepY = 150;
-
-    return List.generate(totalLevels, (i) {
-      final double y = startY - i * stepY;
-      final double x = _waveX(y, amplitude, period);
-      return Positioned(
-        top: y,
-        left: x - 30,
-        child: LevelNode(
-          levelNumber: i + 1,
-          stars: (i + 1) % 4,
-          isCurrent: i + 1 == 22,
-          onTap: () {
-            // Добавим опыт при прохождении уровня
-            setState(() {currentXP += 40;
-              if (currentXP >= xpForNextLevel) {
-                currentXP -= xpForNextLevel;
-                playerLevel++;
-              }
-              _saveSettings();
-            });
-
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => QuizScreen(level: i + 1),
-              ),
-            );
-          },
-        ),
-      );
-    });
-  }
-
-  double _waveX(double y, double amplitude, double period) {
-    const double centerX = 200;
-    return centerX + sin(y / period) * amplitude;
-  }
 }
 
 class MapPathPainter extends CustomPainter {
+  final List<Offset> centers;
+
+  MapPathPainter(this.centers);
+
   @override
   void paint(Canvas canvas, Size size) {
+    if (centers.isEmpty) return;
+
+    final path = Path();
+    path.moveTo(centers.first.dx, centers.first.dy);
+
+    for (int i = 1; i < centers.length; i++) {
+      final p1 = centers[i - 1];
+      final p2 = centers[i];
+      final mid = Offset((p1.dx + p2.dx) / 2, (p1.dy + p2.dy) / 2);
+      path.quadraticBezierTo(mid.dx, mid.dy, p2.dx, p2.dy);
+    }
+
+    final shadow = Paint()
+      ..color = Colors.black.withOpacity(0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+
     final paint = Paint()
-      ..color = Colors.orangeAccent.withOpacity(0.8)
+      ..color = Colors.orangeAccent.withOpacity(0.9)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 5
       ..strokeCap = StrokeCap.round;
 
-    const double amplitude = 120;
-    const double period = 250;
-    const double centerX = 200;
-
-    final path = Path();
-    path.moveTo(centerX + sin(size.height / period) * amplitude, size.height);
-
-    for (double y = size.height; y >= 0; y -= 2) {
-      final x = centerX + sin(y / period) * amplitude;
-      path.lineTo(x, y);
-    }
-
+    canvas.drawPath(path, shadow);
     canvas.drawPath(path, paint);
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant MapPathPainter oldDelegate) =>
+      oldDelegate.centers != centers;
 }

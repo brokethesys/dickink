@@ -21,7 +21,7 @@ class _QuizScreenState extends State<QuizScreen> {
     },
     {
       "question": "Какая формула воды?",
-      "options": ["H2O", "CO2", "O2", "H2"],
+      "options": ["H₂O", "CO₂", "O₂", "H₂"],
       "answer": 0
     },
     {
@@ -39,81 +39,178 @@ class _QuizScreenState extends State<QuizScreen> {
   @override
   void initState() {
     super.initState();
-    // берём вопрос по номеру уровня
     question = questions[widget.level % questions.length];
+  }
+
+  void _handleAnswerTap(int index) {
+    if (answered) return;
+    setState(() {
+      selectedIndex = index;
+      answered = true;
+    });
+
+    Future.delayed(const Duration(seconds: 1), () {
+      Navigator.pop(context);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF002C58),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF003974),
-        title: Text('Уровень ${widget.level}'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 50),
-            Text(
-              question["question"],
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
+      body: Stack(
+        children: [
+          // 🖼️ Фон
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/quiz_bg.jpg',
+              fit: BoxFit.cover,
             ),
-            const SizedBox(height: 40),
+          ),
 
-            // Варианты ответов
-            ...List.generate(question["options"].length, (index) {
-              final isCorrect = index == question["answer"];
-              final isSelected = selectedIndex == index;
+          // Тёмный градиент для читаемости текста
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.black.withOpacity(0.5),
+                    Colors.black.withOpacity(0.2),
+                  ],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
+              ),
+            ),
+          ),
 
-              Color color = Colors.white;
-              if (answered && isSelected) {
-                color = isCorrect ? Colors.greenAccent : Colors.redAccent;
-              }
+          // 🔹 Содержимое
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // Верхняя панель
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back_ios_new,
+                            color: Colors.white),
+                      ),
+                      Text(
+                        'Уровень ${widget.level}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          shadows: [
+                            Shadow(color: Colors.black54, blurRadius: 4),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 48), // баланс для симметрии
+                    ],
+                  ),
+                  const SizedBox(height: 40),
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: GestureDetector(
-                  onTap: answered
-                      ? null
-                      : () {
-                          setState(() {
-                            selectedIndex = index;
-                            answered = true;
-                          });
-                          Future.delayed(const Duration(seconds: 1), () {
-                            Navigator.pop(context);
-                          });
-                        },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
+                  // 🧠 Вопрос
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.2),
+                      color: Colors.white.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: color, width: 2),
+                      border: Border.all(color: Colors.white24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
                     ),
                     child: Text(
-                      question["options"][index],
-                      textAlign: TextAlign.center,
+                      question["question"],
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        height: 1.3,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
-                ),
-              );
-            }),
-          ],
-        ),
+                  const SizedBox(height: 40),
+
+                  // 🟩 Варианты ответов — сетка 2x2
+                  Expanded(
+                    child: GridView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: question["options"].length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 16,
+                        crossAxisSpacing: 16,
+                        childAspectRatio: 1,
+                      ),
+                      itemBuilder: (context, index) {
+                        final isCorrect = index == question["answer"];
+                        final isSelected = selectedIndex == index;
+
+                        Color borderColor = Colors.white;
+                        Color fillColor = Colors.white.withOpacity(0.1);
+
+                        if (answered && isSelected) {
+                          borderColor =
+                              isCorrect ? Colors.greenAccent : Colors.redAccent;
+                          fillColor = borderColor.withOpacity(0.3);
+                        } else if (answered && isCorrect) {
+                          borderColor = Colors.greenAccent;
+                        }
+
+                        return GestureDetector(
+                          onTap: () => _handleAnswerTap(index),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+                            decoration: BoxDecoration(
+                              color: fillColor,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: borderColor, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
+                                child: Text(
+                                  question["options"][index],
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
