@@ -20,6 +20,8 @@ class _MapScreenState extends State<MapScreen>
   int playerLevel = 1;
   int currentXP = 50;
   int coins = 120;
+  int currentLevel = 1;
+  Set<int> completedLevels = {};
 
   late AnimationController _xpController;
   late Animation<double> _xpAnimation;
@@ -54,15 +56,22 @@ class _MapScreenState extends State<MapScreen>
       playerLevel = prefs.getInt('playerLevel') ?? 1;
       currentXP = prefs.getInt('currentXP') ?? 50;
       coins = prefs.getInt('coins') ?? 120;
+      currentLevel = prefs.getInt('currentLevel') ?? 1;
+      completedLevels = (prefs.getStringList('completedLevels') ?? [])
+          .map((e) => int.parse(e))
+          .toSet();
     });
   }
 
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('currentLevel', currentLevel);
+    await prefs.setStringList(
+      'completedLevels', completedLevels.map((e) => e.toString()).toList());
+    await prefs.setInt('playerLevel', playerLevel);
     await prefs.setBool('soundEnabled', soundEnabled);
     await prefs.setBool('musicEnabled', musicEnabled);
     await prefs.setBool('vibrationEnabled', vibrationEnabled);
-    await prefs.setInt('playerLevel', playerLevel);
     await prefs.setInt('currentXP', currentXP);
     await prefs.setInt('coins', coins);
   }
@@ -104,8 +113,7 @@ class _MapScreenState extends State<MapScreen>
                           SwitchListTile(
                             title: const Text('Звук'),
                             activeThumbColor: Colors.orangeAccent,
-                            value: soundEnabled,
-                            onChanged: (v) {
+                            value: soundEnabled,onChanged: (v) {
                               setState(() => soundEnabled = v);
                               setStateDialog(() => soundEnabled = v);
                               _saveSettings();
@@ -170,7 +178,6 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
-  // 📍 центры уровней — синусоида + лёгкий шум
   List<Offset> _calculateLevelCenters() {
     const int totalLevels = 26;
     const double amplitude = 120;
@@ -191,30 +198,53 @@ class _MapScreenState extends State<MapScreen>
 
   List<Widget> _buildLevelNodes(BuildContext context) {
     final centers = _calculateLevelCenters();
+
     return List.generate(centers.length, (i) {
       final c = centers[i];
+      final levelNumber = i + 1;
+
+      final isCompleted = completedLevels.contains(levelNumber);
+      final isCurrent = levelNumber == currentLevel;
+      final isLocked = levelNumber > currentLevel;
+
       return Positioned(
         top: c.dy,
         left: c.dx - 30,
         child: LevelNode(
-          levelNumber: i + 1,
-          stars: (i + 1) % 4,
-          isCurrent: i + 1 == 22,
-          onTap: () {
-            setState(() {
-              currentXP += 40;
-              if (currentXP >= xpForNextLevel) {
-                currentXP -= xpForNextLevel;
-                playerLevel++;
-              }
-              _saveSettings();
-              _xpController.forward(from: 0);
-            });
+          levelNumber: levelNumber,
+          isCurrent: isCurrent,
+          isLocked: isLocked,
+          isCompleted: isCompleted,
+          onTap: () async {
+            if (isLocked) return;
 
-            Navigator.push(
+            final result = await Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => QuizScreen(level: i + 1)),
+              MaterialPageRoute(builder: (_) => QuizScreen(level: levelNumber),
+              ),
             );
+
+            if (result == true) {
+              setState(() {
+                completedLevels.add(levelNumber);
+
+                // Добавляем опыт
+                currentXP += 50;
+
+                // Проверка повышения уровня
+                while (currentXP >= xpForNextLevel) {
+                  currentXP -= xpForNextLevel;
+                  playerLevel++;
+                }
+
+                // Открываем следующий уровень
+                if (levelNumber == currentLevel) {
+                  currentLevel++;
+                }
+
+                _saveSettings();
+              });
+            }
           },
         ),
       );
@@ -316,8 +346,7 @@ class _MapScreenState extends State<MapScreen>
                     },
                   ),
                   Center(
-                    child: Text(
-                      '$currentXP / $xpForNextLevel',
+                    child: Text('$currentXP / $xpForNextLevel',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -455,6 +484,5 @@ class MapPathPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant MapPathPainter oldDelegate) =>
-      oldDelegate.centers != centers;
+  bool shouldRepaint(covariant MapPathPainter oldDelegate) =>oldDelegate.centers != centers;
 }

@@ -44,13 +44,17 @@ class _QuizScreenState extends State<QuizScreen> {
 
   void _handleAnswerTap(int index) {
     if (answered) return;
+
     setState(() {
       selectedIndex = index;
       answered = true;
     });
 
+    final isCorrect = index == question["answer"];
+
+    // ⏳ через секунду возвращаем результат
     Future.delayed(const Duration(seconds: 1), () {
-      Navigator.pop(context);
+      Navigator.pop(context, isCorrect); // возвращаем true при правильном ответе
     });
   }
 
@@ -59,7 +63,7 @@ class _QuizScreenState extends State<QuizScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 🖼️ Фон
+          // 🖼 Фон
           Positioned.fill(
             child: Image.asset(
               'assets/images/quiz_bg.jpg',
@@ -67,7 +71,7 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
           ),
 
-          // Тёмный градиент для читаемости текста
+          // 🔲 Градиент поверх фона
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -89,12 +93,12 @@ class _QuizScreenState extends State<QuizScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // Верхняя панель
+                  // 🔝 Верхняя панель
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.pop(context, false),
                         icon: const Icon(Icons.arrow_back_ios_new,
                             color: Colors.white),
                       ),
@@ -109,7 +113,7 @@ class _QuizScreenState extends State<QuizScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 48), // баланс для симметрии
+                      const SizedBox(width: 48),
                     ],
                   ),
                   const SizedBox(height: 40),
@@ -125,8 +129,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
+                          blurRadius: 8,offset: const Offset(0, 3),
                         ),
                       ],
                     ),
@@ -143,7 +146,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // 🟩 Варианты ответов — сетка 2x2
+                  // 🟩 Варианты ответов (2x2)
                   Expanded(
                     child: GridView.builder(
                       physics: const NeverScrollableScrollPhysics(),
@@ -162,6 +165,7 @@ class _QuizScreenState extends State<QuizScreen> {
                         Color borderColor = Colors.white;
                         Color fillColor = Colors.white.withOpacity(0.1);
 
+                        // 🎨 Подсветка при ответе
                         if (answered && isSelected) {
                           borderColor =
                               isCorrect ? Colors.greenAccent : Colors.redAccent;
@@ -173,32 +177,25 @@ class _QuizScreenState extends State<QuizScreen> {
                         return GestureDetector(
                           onTap: () => _handleAnswerTap(index),
                           child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 250),
+                            duration: const Duration(milliseconds: 300),
                             decoration: BoxDecoration(
                               color: fillColor,
-                              borderRadius: BorderRadius.circular(14),
+                              borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: borderColor, width: 3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.3),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
                             ),
                             child: Center(
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8),
-                                child: Text(
-                                  question["options"][index],
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              child: Text(
+                                question["options"][index],
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  shadows: [
+                                    Shadow(
+                                        color: Colors.black45, blurRadius: 4),
+                                  ],
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
                           ),
