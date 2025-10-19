@@ -29,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF001B33),
+      backgroundColor: const Color.fromARGB(255, 67, 91, 112),
       body: PageView(
         controller: _pageController,
         onPageChanged: _onPageChanged,
@@ -45,9 +45,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBottomBar() {
     const icons = [
-      Icons.storefront_rounded,
+      Icons.shop,
       Icons.map_rounded,
-      Icons.emoji_events_rounded,
+      Icons.workspace_premium,
     ];
     const labels = [
       'Магазин',
@@ -59,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
       height: 78,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF003A6E), Color(0xFF001C3A)],
+          colors: [Color.fromARGB(255, 74, 87, 110), Color.fromARGB(255, 59, 70, 88)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -86,8 +86,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   gradient: active
                       ? const LinearGradient(
                           colors: [
-                            Color(0xFFFFC107),
-                            Color(0xFFFF9800),
+                            Color.fromARGB(255, 74, 110, 143),
+                            Color.fromARGB(255, 83, 124, 160),
                           ],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       : null,
                   border: i != 2
                       ? const Border(
-                          right: BorderSide(color: Colors.black26, width: 1),
+                          right: BorderSide(color: Color.fromARGB(255, 91, 102, 123), width: 2),
                         )
                       : null,
                 ),
