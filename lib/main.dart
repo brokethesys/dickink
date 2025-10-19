@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 
+/// 💡 Глобальное значение текущего выбранного фона.
+/// Используется и в магазине, и на экране уровней.
+final ValueNotifier<String> currentBackground = ValueNotifier<String>('blue');
+
 void main() {
   runApp(const MyApp());
 }

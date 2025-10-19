@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../main.dart'; // для currentBackground
 
 class QuizScreen extends StatefulWidget {
   final int level;
@@ -12,6 +13,7 @@ class _QuizScreenState extends State<QuizScreen> {
   late Map<String, dynamic> question;
   int? selectedIndex;
   bool answered = false;
+  Color backgroundColor = Colors.blue;
 
   final List<Map<String, dynamic>> questions = [
     {
@@ -36,10 +38,42 @@ class _QuizScreenState extends State<QuizScreen> {
     },
   ];
 
+  Color _colorForId(String id) {
+    final colorMap = {
+      'blue': Colors.blue,
+      'green': Colors.green,
+      'purple': Colors.purple,
+      'orange': Colors.orange,
+      'red': Colors.red,
+      'cyan': Colors.cyan,
+      'pink': Colors.pink,
+      'teal': Colors.teal,
+    };
+    return colorMap[id] ?? Colors.blue;
+  }
+
+  void _backgroundListener() {
+    setState(() {
+      backgroundColor = _colorForId(currentBackground.value);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     question = questions[widget.level % questions.length];
+
+    // Инициализация фона
+    backgroundColor = _colorForId(currentBackground.value);
+
+    // Подписка на изменения фона
+    currentBackground.addListener(_backgroundListener);
+  }
+
+  @override
+  void dispose() {
+    currentBackground.removeListener(_backgroundListener);
+    super.dispose();
   }
 
   void _handleAnswerTap(int index) {
@@ -52,9 +86,9 @@ class _QuizScreenState extends State<QuizScreen> {
 
     final isCorrect = index == question["answer"];
 
-    // ⏳ через секунду возвращаем результат
+    // Через секунду возвращаем результат
     Future.delayed(const Duration(seconds: 1), () {
-      Navigator.pop(context, isCorrect); // возвращаем true при правильном ответе
+      Navigator.pop(context, isCorrect);
     });
   }
 
@@ -63,15 +97,12 @@ class _QuizScreenState extends State<QuizScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 🖼 Фон
+          // 🔹 Фон с выбранным цветом
           Positioned.fill(
-            child: Image.asset(
-              'assets/images/quiz_bg.jpg',
-              fit: BoxFit.cover,
-            ),
+            child: Container(color: backgroundColor),
           ),
 
-          // 🔲 Градиент поверх фона
+          // 🔹 Градиент для читаемости
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -93,7 +124,7 @@ class _QuizScreenState extends State<QuizScreen> {
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // 🔝 Верхняя панель
+                  // Верхняя панель
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -111,14 +142,13 @@ class _QuizScreenState extends State<QuizScreen> {
                           shadows: [
                             Shadow(color: Colors.black54, blurRadius: 4),
                           ],
-                        ),
-                      ),
+                        ),),
                       const SizedBox(width: 48),
                     ],
                   ),
                   const SizedBox(height: 40),
 
-                  // 🧠 Вопрос
+                  // Вопрос
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
@@ -129,7 +159,8 @@ class _QuizScreenState extends State<QuizScreen> {
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.3),
-                          blurRadius: 8,offset: const Offset(0, 3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
@@ -146,7 +177,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // 🟩 Варианты ответов (2x2)
+                  // Варианты ответов (2x2)
                   Expanded(
                     child: GridView.builder(
                       physics: const NeverScrollableScrollPhysics(),
@@ -165,7 +196,7 @@ class _QuizScreenState extends State<QuizScreen> {
                         Color borderColor = Colors.white;
                         Color fillColor = Colors.white.withOpacity(0.1);
 
-                        // 🎨 Подсветка при ответе
+                        // Подсветка при ответе
                         if (answered && isSelected) {
                           borderColor =
                               isCorrect ? Colors.greenAccent : Colors.redAccent;
@@ -184,18 +215,22 @@ class _QuizScreenState extends State<QuizScreen> {
                               border: Border.all(color: borderColor, width: 3),
                             ),
                             child: Center(
-                              child: Text(
-                                question["options"][index],
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                  shadows: [
-                                    Shadow(
-                                        color: Colors.black45, blurRadius: 4),
-                                  ],
+                              child: AnimatedScale(
+                                scale: isSelected ? 1.05 : 1.0,
+                                duration: const Duration(milliseconds: 200),
+                                child: Text(
+                                  question["options"][index],
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                    shadows: [
+                                      Shadow(
+                                          color: Colors.black45,
+                                          blurRadius: 4),
+                                    ],
+                                  ),textAlign: TextAlign.center,
                                 ),
-                                textAlign: TextAlign.center,
                               ),
                             ),
                           ),
