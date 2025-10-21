@@ -111,10 +111,9 @@ class _ShopScreenState extends State<ShopScreen> {
           itemBuilder: (context, index) {
             final bg = items[index];
             final bool isSelected = selectedBackground == bg['id'];
-
             final bool isOwned = ownedBackgrounds.contains(bg['id']);
             final double progress =
-                (coins / bg['price']).clamp(0, 1).toDouble(); // прогресс покупки
+                (coins / (bg['price'] == 0 ? 1 : bg['price'])).clamp(0, 1).toDouble();
 
             return GestureDetector(
               onTap: () {
@@ -123,7 +122,8 @@ class _ShopScreenState extends State<ShopScreen> {
                 } else {
                   _buyBackground(bg['id'], bg['price']);
                 }
-              },child: Container(
+              },
+              child: Container(
                 decoration: BoxDecoration(
                   color: bg['color'],
                   borderRadius: BorderRadius.circular(12),
@@ -150,13 +150,13 @@ class _ShopScreenState extends State<ShopScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                    // нижняя панель
                     Positioned(
                       left: 0,
                       right: 0,
                       bottom: 0,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 6, horizontal: 6),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.4),
                           borderRadius: const BorderRadius.only(
@@ -179,13 +179,27 @@ class _ShopScreenState extends State<ShopScreen> {
                             else
                               Column(
                                 children: [
-                                  Text(
-                                    '${coins}/${bg['price']} 💰',
-                                    style: const TextStyle(
-                                      color: Colors.amberAccent,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        '$coins/${bg['price']}',
+                                        style: const TextStyle(
+                                          color: Colors.amberAccent,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: Image.asset(
+                                          'assets/images/coin.png',
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   const SizedBox(height: 3),
                                   ClipRRect(
@@ -236,7 +250,11 @@ class _ShopScreenState extends State<ShopScreen> {
         actions: [
           Row(
             children: [
-              const Icon(Icons.monetization_on, color: Colors.amber),
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: Image.asset('assets/images/coin.png', fit: BoxFit.cover),
+              ),
               const SizedBox(width: 4),
               Text(
                 '$coins',

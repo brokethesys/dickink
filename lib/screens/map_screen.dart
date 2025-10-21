@@ -67,7 +67,9 @@ class _MapScreenState extends State<MapScreen>
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('currentLevel', currentLevel);
     await prefs.setStringList(
-      'completedLevels', completedLevels.map((e) => e.toString()).toList());
+      'completedLevels',
+      completedLevels.map((e) => e.toString()).toList(),
+    );
     await prefs.setInt('playerLevel', playerLevel);
     await prefs.setBool('soundEnabled', soundEnabled);
     await prefs.setBool('musicEnabled', musicEnabled);
@@ -89,77 +91,103 @@ class _MapScreenState extends State<MapScreen>
           child: Padding(
             padding: const EdgeInsets.only(top: 80, right: 16),
             child: Material(
-              color: Colors.white.withOpacity(0.95),
-              borderRadius: BorderRadius.circular(16),
-              child: SizedBox(
-                width: 260,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: StatefulBuilder(
-                    builder: (context, setStateDialog) {
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Настройки',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF001B33),
+              color: Colors.transparent,
+              child: Container(
+                width: 280,
+                decoration: BoxDecoration(
+                  color: Colors.blueGrey.shade900.withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.6),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Настройки',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildSettingsButton(
+                      icon: Icons.volume_up,
+                      label: 'Звук',
+                      value: soundEnabled,
+                      onChanged: (v) {
+                        setState(() => soundEnabled = v);
+                        _saveSettings(); // сохраняем в фоне
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSettingsButton(
+                      icon: Icons.music_note,
+                      label: 'Музыка',
+                      value: musicEnabled,
+                      onChanged: (v) {
+                        setState(() => musicEnabled = v);
+                        _saveSettings();
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSettingsButton(
+                      icon: Icons.vibration,
+                      label: 'Вибрация при правильных ответах',
+                      value: vibrationEnabled,
+                      onChanged: (v) {
+                        setState(() => vibrationEnabled = v);
+                        _saveSettings();
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Divider(color: Colors.white24),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Напиши нам на support@quizgame.app 💌',
                             ),
+                            behavior: SnackBarBehavior.floating,
                           ),
-                          const SizedBox(height: 12),
-                          SwitchListTile(
-                            title: const Text('Звук'),
-                            activeThumbColor: Colors.orangeAccent,
-                            value: soundEnabled,onChanged: (v) {
-                              setState(() => soundEnabled = v);
-                              setStateDialog(() => soundEnabled = v);
-                              _saveSettings();
-                            },
+                        );
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Colors.orangeAccent, Colors.deepOrange],
                           ),
-                          SwitchListTile(
-                            title: const Text('Музыка'),
-                            activeThumbColor: Colors.orangeAccent,
-                            value: musicEnabled,
-                            onChanged: (v) {
-                              setState(() => musicEnabled = v);
-                              setStateDialog(() => musicEnabled = v);
-                              _saveSettings();
-                            },
-                          ),
-                          SwitchListTile(
-                            title: const Text('Вибрация при правильных ответах'),
-                            activeThumbColor: Colors.orangeAccent,
-                            value: vibrationEnabled,
-                            onChanged: (v) {
-                              setState(() => vibrationEnabled = v);
-                              setStateDialog(() => vibrationEnabled = v);
-                              _saveSettings();
-                            },
-                          ),
-                          const Divider(),
-                          ListTile(
-                            leading: const Icon(Icons.mail_outline,
-                                color: Colors.orangeAccent),
-                            title: const Text('Обратиться в поддержку'),
-                            subtitle: const Text('support@quizgame.app'),
-                            onTap: () {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content:
-                                      Text('Напиши нам на support@quizgame.app 💌'),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.mail_outline, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              'Обратиться в поддержку',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -175,6 +203,58 @@ class _MapScreenState extends State<MapScreen>
           child: FadeTransition(opacity: anim1, child: child),
         );
       },
+    );
+  }
+
+  Widget _buildSettingsButton({
+    required IconData icon,
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        decoration: BoxDecoration(
+          gradient: value
+              ? const LinearGradient(
+                  colors: [Colors.lightBlueAccent, Colors.blueAccent],
+                )
+              : const LinearGradient(colors: [Colors.grey, Colors.blueGrey]),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 26),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeColor: Colors.orangeAccent,
+              activeTrackColor: Colors.orange.withOpacity(0.4),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -220,24 +300,20 @@ class _MapScreenState extends State<MapScreen>
 
             final result = await Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => QuizScreen(level: levelNumber),
-              ),
+              MaterialPageRoute(builder: (_) => QuizScreen(level: levelNumber)),
             );
 
             if (result == true) {
               setState(() {
                 completedLevels.add(levelNumber);
 
-                // Добавляем опыт
                 currentXP += 50;
 
-                // Проверка повышения уровня
                 while (currentXP >= xpForNextLevel) {
                   currentXP -= xpForNextLevel;
                   playerLevel++;
                 }
 
-                // Открываем следующий уровень
                 if (levelNumber == currentLevel) {
                   currentLevel++;
                 }
@@ -311,8 +387,10 @@ class _MapScreenState extends State<MapScreen>
               decoration: BoxDecoration(
                 color: const Color.fromARGB(255, 0, 33, 38),
                 borderRadius: BorderRadius.circular(12),
-                border:
-                    Border.all(color: Colors.black.withOpacity(0.3), width: 2),
+                border: Border.all(
+                  color: Colors.black.withOpacity(0.3),
+                  width: 2,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.4),
@@ -346,7 +424,8 @@ class _MapScreenState extends State<MapScreen>
                     },
                   ),
                   Center(
-                    child: Text('$currentXP / $xpForNextLevel',
+                    child: Text(
+                      '$currentXP / $xpForNextLevel',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -386,9 +465,9 @@ class _MapScreenState extends State<MapScreen>
           ),
           const SizedBox(width: 14),
           _squareButton(
-            icon: Icons.monetization_on,
-            color: Colors.amber.shade700,
+            imageAsset: 'assets/images/coin.png',
             label: coins.toString(),
+            color: Colors.amber.shade700,
             onTap: () {},
           ),
           const SizedBox(width: 10),
@@ -403,9 +482,10 @@ class _MapScreenState extends State<MapScreen>
   }
 
   Widget _squareButton({
-    required IconData icon,
+    IconData? icon,
     Color? color,
     String? label,
+    String? imageAsset,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -428,7 +508,14 @@ class _MapScreenState extends State<MapScreen>
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(icon, color: color ?? Colors.grey.shade800, size: 28),
+            if (icon != null)
+              Icon(icon, color: color ?? Colors.grey.shade800, size: 28),
+            if (imageAsset != null)
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: Image.asset(imageAsset, fit: BoxFit.cover),
+              ),
             if (label != null)
               Positioned(
                 bottom: 3,
@@ -484,5 +571,6 @@ class MapPathPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant MapPathPainter oldDelegate) =>oldDelegate.centers != centers;
+  bool shouldRepaint(covariant MapPathPainter oldDelegate) =>
+      oldDelegate.centers != centers;
 }
