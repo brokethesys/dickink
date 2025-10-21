@@ -78,7 +78,12 @@ class _MapScreenState extends State<MapScreen>
     await prefs.setInt('coins', coins);
   }
 
-  void _openSettingsPanel(BuildContext context) {
+  void _openSettingsPanel(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    bool localSound = soundEnabled;
+    bool localMusic = musicEnabled;
+    bool localVibration = vibrationEnabled;
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -86,112 +91,140 @@ class _MapScreenState extends State<MapScreen>
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 250),
       pageBuilder: (context, anim1, anim2) {
-        return Align(
-          alignment: Alignment.topRight,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 80, right: 16),
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: 280,
-                decoration: BoxDecoration(
-                  color: Colors.blueGrey.shade900.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.6),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Настройки',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildSettingsButton(
-                      icon: Icons.volume_up,
-                      label: 'Звук',
-                      value: soundEnabled,
-                      onChanged: (v) {
-                        setState(() => soundEnabled = v);
-                        _saveSettings(); // сохраняем в фоне
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSettingsButton(
-                      icon: Icons.music_note,
-                      label: 'Музыка',
-                      value: musicEnabled,
-                      onChanged: (v) {
-                        setState(() => musicEnabled = v);
-                        _saveSettings();
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSettingsButton(
-                      icon: Icons.vibration,
-                      label: 'Вибрация при правильных ответах',
-                      value: vibrationEnabled,
-                      onChanged: (v) {
-                        setState(() => vibrationEnabled = v);
-                        _saveSettings();
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Divider(color: Colors.white24),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Напиши нам на support@quizgame.app 💌',
-                            ),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Colors.orangeAccent, Colors.deepOrange],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
+        return StatefulBuilder(
+          builder: (context, setLocalState) {
+            Future<void> toggleSetting(String key, bool value) async {
+              await prefs.setBool(key, value);
+              setState(() {
+                if (key == 'soundEnabled') soundEnabled = value;
+                if (key == 'musicEnabled') musicEnabled = value;
+                if (key == 'vibrationEnabled') vibrationEnabled = value;
+              });
+            }
+
+            return Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 80, right: 16),
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: 280,
+                    decoration: BoxDecoration(
+                      color: Colors.blueGrey.shade900.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.6),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.mail_outline, color: Colors.white),
-                            SizedBox(width: 8),
-                            Text(
-                              'Обратиться в поддержку',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Настройки',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // === Переключатели ===
+                        _buildRoyaleSwitch(
+                          icon: Icons.volume_up,
+                          label: 'Звук',
+                          value: localSound,
+                          onChanged: (v) {
+                            setLocalState(() => localSound = v);
+                            toggleSetting('soundEnabled', v);
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        _buildRoyaleSwitch(
+                          icon: Icons.music_note,
+                          label: 'Музыка',
+                          value: localMusic,
+                          onChanged: (v) {
+                            setLocalState(() => localMusic = v);
+                            toggleSetting('musicEnabled', v);
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        _buildRoyaleSwitch(
+                          icon: Icons.vibration,
+                          label: 'Вибрация при ответах',
+                          value: localVibration,
+                          onChanged: (v) {
+                            setLocalState(() => localVibration = v);
+                            toggleSetting('vibrationEnabled', v);
+                          },
+                        ),
+
+                        const SizedBox(height: 16),
+                        Divider(color: Colors.white24),
+                        const SizedBox(height: 8),
+
+                        // === Кнопка поддержки ===
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Напиши нам на support@quizgame.app 💌',
+                                ),
+                                behavior: SnackBarBehavior.floating,
                               ),
+                            );
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Colors.orangeAccent,
+                                  Colors.deepOrange,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.5),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
                             ),
-                          ],
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.mail_outline, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Обратиться в поддержку',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
       transitionBuilder: (context, anim1, anim2, child) {
@@ -206,7 +239,7 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
-  Widget _buildSettingsButton({
+  Widget _buildRoyaleSwitch({
     required IconData icon,
     required String label,
     required bool value,
@@ -215,42 +248,83 @@ class _MapScreenState extends State<MapScreen>
     return GestureDetector(
       onTap: () => onChanged(!value),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
         decoration: BoxDecoration(
           gradient: value
               ? const LinearGradient(
-                  colors: [Colors.lightBlueAccent, Colors.blueAccent],
+                  colors: [Color(0xFF63B4FF), Color(0xFF3389E5)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 )
-              : const LinearGradient(colors: [Colors.grey, Colors.blueGrey]),
-          borderRadius: BorderRadius.circular(12),
+              : const LinearGradient(
+                  colors: [Color(0xFF999999), Color(0xFF777777)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          border: Border.all(color: Colors.white, width: 2),
+          borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.4),
+              offset: const Offset(0, 4),
               blurRadius: 6,
-              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Row(
           children: [
-            Icon(icon, color: Colors.white, size: 26),
+            Icon(icon, color: Colors.white, size: 24),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 label,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w900,
                   fontSize: 16,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black,
+                      offset: Offset(1, 1),
+                      blurRadius: 2,
+                    ),
+                  ],
                 ),
               ),
             ),
-            Switch(
-              value: value,
-              onChanged: onChanged,
-              activeColor: Colors.orangeAccent,
-              activeTrackColor: Colors.orange.withOpacity(0.4),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutBack,
+              width: 46,
+              height: 26,
+              decoration: BoxDecoration(
+                color: value ? Colors.greenAccent.shade400 : Colors.grey,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 180),
+                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+                curve: Curves.easeInOut,
+                child: Container(
+                  margin: const EdgeInsets.all(3),
+                  width: 18,
+                  height: 18,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 3,
+                        offset: Offset(1, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
