@@ -3,11 +3,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class AchievementsScreen extends StatefulWidget {
   final int coins;
+  final int completedLevels;
   final ValueChanged<int> onCoinsUpdated;
 
   const AchievementsScreen({
     super.key,
     required this.coins,
+    required this.completedLevels,
     required this.onCoinsUpdated,
   });
 
@@ -22,35 +24,30 @@ class _AchievementsScreenState extends State<AchievementsScreen>
   List<Map<String, dynamic>> achievements = [
     {
       "title": "Пройти 3 уровня",
-      "progress": 3,
       "goal": 3,
       "reward": 50,
       "collected": false,
     },
     {
       "title": "Пройти 5 уровней",
-      "progress": 4,
       "goal": 5,
       "reward": 75,
       "collected": false,
     },
     {
       "title": "Открыть 5 фонов",
-      "progress": 2,
       "goal": 5,
       "reward": 100,
       "collected": false,
     },
     {
       "title": "Заработать 500 монет",
-      "progress": 350,
       "goal": 500,
       "reward": 120,
       "collected": false,
     },
     {
       "title": "Пройти все 10 уровней",
-      "progress": 10,
       "goal": 10,
       "reward": 200,
       "collected": false,
@@ -64,6 +61,26 @@ class _AchievementsScreenState extends State<AchievementsScreen>
     _loadCollectedAchievements();
   }
 
+  @override
+  void didUpdateWidget(covariant AchievementsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _updateProgress();
+  }
+
+  void _updateProgress() {
+    // Автоматически обновляем прогресс на основе состояния игрока
+    for (var ach in achievements) {
+      if (ach["title"].contains("Пройти")) {
+        ach["progress"] = widget.completedLevels;
+      } else if (ach["title"].contains("монет")) {
+        ach["progress"] = widget.coins;
+      } else {
+        ach["progress"] = 0; // Для "Открыть 5 фонов" если не реализовано
+      }
+    }
+    setState(() {});
+  }
+
   Future<void> _loadCollectedAchievements() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String> collected =
@@ -73,6 +90,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
         achievements[i]["collected"] = collected.contains(i.toString());
       }
     });
+    _updateProgress();
   }
 
   Future<void> _saveCollectedAchievements() async {
@@ -134,8 +152,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
               const SizedBox(height: 10),
               const Text(
                 "Достижения",
-                style: TextStyle(
-                  color: Colors.white,
+                style: TextStyle(color: Colors.white,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   shadows: [Shadow(color: Colors.black54, blurRadius: 6)],
@@ -147,8 +164,10 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                   itemCount: achievements.length,
                   itemBuilder: (context, index) {
                     final ach = achievements[index];
+                    final double progress =
+                        (ach["progress"] ?? 0).toDouble();
                     final double percent =
-                        (ach["progress"] / ach["goal"]).clamp(0.0, 1.0);
+                        (progress / ach["goal"]).clamp(0.0, 1.0);
                     final bool completed = percent >= 1.0;
                     final bool collected = ach["collected"] == true;
 
@@ -198,16 +217,19 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                                         height: 28,
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(14),
+                                          borderRadius:
+                                              BorderRadius.circular(14),
                                         ),
                                       ),
                                       LayoutBuilder(
                                         builder: (context, constraints) {
                                           return Container(
-                                            width: constraints.maxWidth * percent,
+                                            width: constraints.maxWidth *
+                                                percent,
                                             height: 28,
                                             decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(14),
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
                                               gradient: LinearGradient(
                                                 colors: completed
                                                     ? [
@@ -241,16 +263,18 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                                                       "Награда получена",
                                                       style: TextStyle(
                                                         color: Colors.black,
-                                                        fontWeight: FontWeight.bold,
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                         fontSize: 13,
                                                       ),
                                                     )
                                                   : Text(
-                                                      "${ach["progress"]}/${ach["goal"]}",
+                                                      "${ach["progress"] ?? 0}/${ach["goal"]}",
                                                       style: const TextStyle(
                                                         color: Colors.white,
                                                         fontSize: 13,
-                                                        fontWeight: FontWeight.w500,
+                                                        fontWeight:
+                                                            FontWeight.w500,
                                                       ),
                                                     ),
                                         ),
@@ -279,8 +303,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                ],
-                              ),
+                                ],),
                             ],
                           ),
                         ],
@@ -307,12 +330,15 @@ class _AnimatedCoinPopup extends StatefulWidget {
 
 class _AnimatedCoinPopupState extends State<_AnimatedCoinPopup>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))
-        ..forward();
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  )..forward();
+
   late final Animation<Offset> _offset =
       Tween(begin: const Offset(0, 1.5), end: const Offset(0, -1.5))
           .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
   late final Animation<double> _opacity =
       Tween(begin: 1.0, end: 0.0).animate(_controller);
 
