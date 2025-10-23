@@ -5,14 +5,7 @@ import '../widgets/level_node.dart';
 import 'quiz_screen.dart';
 
 class MapScreen extends StatefulWidget {
-  final Set<int> completedLevels;
-  final ValueChanged<Set<int>>? onLevelsUpdated;
-
-  const MapScreen({
-    super.key,
-    required this.completedLevels,
-    this.onLevelsUpdated,
-  });
+  const MapScreen({super.key});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -25,19 +18,18 @@ class _MapScreenState extends State<MapScreen>
   bool vibrationEnabled = true;
 
   int playerLevel = 1;
-  int currentXP = 50;
-  int coins = 100;
+  int currentXP = 0;
+  int coins = 0;
   int currentLevel = 1;
+  Set<int> completedLevels = {};
 
   late AnimationController _xpController;
   late Animation<double> _xpAnimation;
 
-  int get xpForNextLevel => 100;
-
+  int get xpForNextLevel => 150;
   int _getCoinsRewardForLevel(int level) {
-    if (level <= 5) return 100;
-    int rewardStage = ((level - 1) ~/ 5);
-    return 100 * rewardStage;
+    int rewardStage = ((level - 1) ~/ 5) + 1;
+    return rewardStage * 100;
   }
 
   @override
@@ -66,13 +58,12 @@ class _MapScreenState extends State<MapScreen>
       musicEnabled = prefs.getBool('musicEnabled') ?? true;
       vibrationEnabled = prefs.getBool('vibrationEnabled') ?? true;
       playerLevel = prefs.getInt('playerLevel') ?? 1;
-      currentXP = prefs.getInt('currentXP') ?? 50;
-      coins = prefs.getInt('coins') ?? 100;
+      currentXP = prefs.getInt('currentXP') ?? 0;
+      coins = prefs.getInt('coins') ?? 0;
       currentLevel = prefs.getInt('currentLevel') ?? 1;
-      final completed = (prefs.getStringList('completedLevels') ?? [])
+      completedLevels = (prefs.getStringList('completedLevels') ?? [])
           .map((e) => int.parse(e))
           .toSet();
-      widget.completedLevels.addAll(completed);
     });
   }
 
@@ -81,7 +72,7 @@ class _MapScreenState extends State<MapScreen>
     await prefs.setInt('currentLevel', currentLevel);
     await prefs.setStringList(
       'completedLevels',
-      widget.completedLevels.map((e) => e.toString()).toList(),
+      completedLevels.map((e) => e.toString()).toList(),
     );
     await prefs.setInt('playerLevel', playerLevel);
     await prefs.setBool('soundEnabled', soundEnabled);
@@ -91,7 +82,6 @@ class _MapScreenState extends State<MapScreen>
     await prefs.setInt('coins', coins);
   }
 
-  // === Настройки ===
   void _openSettingsPanel(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     bool localSound = soundEnabled;
@@ -124,7 +114,8 @@ class _MapScreenState extends State<MapScreen>
                   color: Colors.transparent,
                   child: Container(
                     width: 280,
-                    decoration: BoxDecoration(color: Colors.blueGrey.shade900.withOpacity(0.95),
+                    decoration: BoxDecoration(
+                      color: Colors.blueGrey.shade900.withOpacity(0.95),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -147,6 +138,8 @@ class _MapScreenState extends State<MapScreen>
                           ),
                         ),
                         const SizedBox(height: 16),
+
+                        // === Переключатели ===
                         _buildRoyaleSwitch(
                           icon: Icons.volume_up,
                           label: 'Звук',
@@ -176,6 +169,115 @@ class _MapScreenState extends State<MapScreen>
                             toggleSetting('vibrationEnabled', v);
                           },
                         ),
+                        const SizedBox(height: 12),
+                        Divider(color: Colors.white24),
+                        const SizedBox(height: 8),
+
+                        GestureDetector(
+                          onTap: () async {
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.clear();
+                            setState(() {
+                              playerLevel = 1;
+                              currentXP = 0;
+                              coins = 0;
+                              currentLevel = 1;
+                              completedLevels.clear();
+                            });
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Прогресс успешно сброшен 🧹'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Colors.redAccent, Colors.red],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.5),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.refresh, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Сбросить прогресс',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Divider(color: Colors.white24),
+                        const SizedBox(height: 8),
+
+                        // === Кнопка поддержки ===
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Напиши нам на support@quizgame.app 💌',
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Colors.orangeAccent,
+                                  Colors.deepOrange,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.5),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.mail_outline, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Обратиться в поддержку',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -183,6 +285,15 @@ class _MapScreenState extends State<MapScreen>
               ),
             );
           },
+        );
+      },
+      transitionBuilder: (context, anim1, anim2, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.2, -0.1),
+            end: Offset.zero,
+          ).animate(anim1),
+          child: FadeTransition(opacity: anim1, child: child),
         );
       },
     );
@@ -231,7 +342,8 @@ class _MapScreenState extends State<MapScreen>
                 label,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.w900,fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
                   shadows: [
                     Shadow(
                       color: Colors.black,
@@ -305,7 +417,7 @@ class _MapScreenState extends State<MapScreen>
       final c = centers[i];
       final levelNumber = i + 1;
 
-      final isCompleted = widget.completedLevels.contains(levelNumber);
+      final isCompleted = completedLevels.contains(levelNumber);
       final isCurrent = levelNumber == currentLevel;
       final isLocked = levelNumber > currentLevel;
 
@@ -327,13 +439,17 @@ class _MapScreenState extends State<MapScreen>
 
             if (result == true) {
               setState(() {
-                widget.completedLevels.add(levelNumber);
+                completedLevels.add(levelNumber);
+
                 currentXP += 50;
 
                 while (currentXP >= xpForNextLevel) {
                   currentXP -= xpForNextLevel;
                   playerLevel++;
-                  coins += _getCoinsRewardForLevel(playerLevel);
+
+                  // Добавляем монеты за повышение уровня
+                  int reward = _getCoinsRewardForLevel(playerLevel);
+                  coins += reward;
                 }
 
                 if (levelNumber == currentLevel) {
@@ -342,8 +458,6 @@ class _MapScreenState extends State<MapScreen>
 
                 _saveSettings();
               });
-
-              widget.onLevelsUpdated?.call(widget.completedLevels);
             }
           },
         ),
@@ -365,7 +479,8 @@ class _MapScreenState extends State<MapScreen>
       body: Stack(
         children: [
           SingleChildScrollView(
-            reverse: true,physics: const ClampingScrollPhysics(),
+            reverse: true,
+            physics: const ClampingScrollPhysics(),
             child: Stack(
               children: [
                 Positioned.fill(
@@ -496,7 +611,7 @@ class _MapScreenState extends State<MapScreen>
           const SizedBox(width: 10),
           _squareButton(
             icon: Icons.settings,
-            color: const Color(0xFF1E88E5),
+            color: const Color(0xFF333333),
             onTap: () => _openSettingsPanel(context),
           ),
         ],
@@ -506,44 +621,51 @@ class _MapScreenState extends State<MapScreen>
 
   Widget _squareButton({
     IconData? icon,
-    String? imageAsset,
-    String? label,
     Color? color,
+    String? label,
+    String? imageAsset,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 46,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        width: 50,
+        height: 56,
         decoration: BoxDecoration(
-          color: color ?? Colors.blueGrey.shade700,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.black.withOpacity(0.3), width: 2),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.4),
-              offset: const Offset(0, 3),
+              color: Colors.black.withOpacity(0.25),
+              spreadRadius: 1,
               blurRadius: 6,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
+            if (icon != null)
+              Icon(icon, color: color ?? Colors.grey.shade800, size: 28),
             if (imageAsset != null)
-              Image.asset(imageAsset, width: 24, height: 24)
-            else if (icon != null)
-              Icon(icon, color: Colors.white, size: 24),
-            if (label != null) ...[
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,fontWeight: FontWeight.bold,
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: Image.asset(imageAsset, fit: BoxFit.cover),
+              ),
+            if (label != null)
+              Positioned(
+                bottom: 3,
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.grey.shade800,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ],
           ],
         ),
       ),
@@ -551,7 +673,6 @@ class _MapScreenState extends State<MapScreen>
   }
 }
 
-// === Рисуем линии пути между уровнями ===
 class MapPathPainter extends CustomPainter {
   final List<Offset> centers;
 
@@ -559,32 +680,35 @@ class MapPathPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (centers.length < 2) return;
+    if (centers.isEmpty) return;
 
-    final pathPaint = Paint()
-      ..color = Colors.white.withOpacity(0.15)
-      ..strokeWidth = 6
-      ..style = PaintingStyle.stroke;
+    final path = Path();
+    path.moveTo(centers.first.dx, centers.first.dy);
 
-    final glowPaint = Paint()
-      ..color = Colors.blueAccent.withOpacity(0.4)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8)
-      ..strokeWidth = 10
-      ..style = PaintingStyle.stroke;
-
-    final path = Path()..moveTo(centers[0].dx, centers[0].dy);
     for (int i = 1; i < centers.length; i++) {
-      final mid = Offset(
-        (centers[i - 1].dx + centers[i].dx) / 2,
-        (centers[i - 1].dy + centers[i].dy) / 2,
-      );
-      path.quadraticBezierTo(mid.dx, mid.dy, centers[i].dx, centers[i].dy);
+      final p1 = centers[i - 1];
+      final p2 = centers[i];
+      final mid = Offset((p1.dx + p2.dx) / 2, (p1.dy + p2.dy) / 2);
+      path.quadraticBezierTo(mid.dx, mid.dy, p2.dx, p2.dy);
     }
 
-    canvas.drawPath(path, glowPaint);
-    canvas.drawPath(path, pathPaint);
+    final shadow = Paint()
+      ..color = Colors.black.withOpacity(0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+
+    final paint = Paint()
+      ..color = Colors.orangeAccent.withOpacity(0.9)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawPath(path, shadow);
+    canvas.drawPath(path, paint);
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant MapPathPainter oldDelegate) =>
+      oldDelegate.centers != centers;
 }

@@ -16,8 +16,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentPage = 1;
   double _indicatorPosition = 1.0;
 
-  int coins = 120; // текущие монеты
-  Set<int> completedLevels = {}; // хранение завершённых уровней
+  int coins = 0; // текущие монеты
 
   @override
   void initState() {
@@ -30,16 +29,13 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     });
 
-    _loadData();
+    _loadCoins();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadCoins() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      coins = prefs.getInt('coins') ?? 120;
-      completedLevels = (prefs.getStringList('completedLevels') ?? [])
-          .map((e) => int.parse(e))
-          .toSet();
+      coins = prefs.getInt('coins') ?? 0;
     });
   }
 
@@ -75,17 +71,9 @@ class _HomeScreenState extends State<HomeScreen> {
         onPageChanged: _onPageChanged,
         children: [
           const ShopScreen(),
-          MapScreen(
-            completedLevels: completedLevels,
-            onLevelsUpdated: (levels) {
-              setState(() {
-                completedLevels = levels;
-              });
-            },
-          ),
+          const MapScreen(),
           AchievementsScreen(
             coins: coins,
-            completedLevels: completedLevels.length, // <- передаем количество пройденных уровней
             onCoinsUpdated: (newCoins) async {
               setState(() {
                 coins = newCoins;
@@ -141,7 +129,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                  ),),
+                  ),
+                ),
               ),
             ),
           ),
