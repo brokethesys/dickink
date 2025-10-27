@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../data/game_state.dart';
 import 'map_screen.dart';
 import 'shop_screen.dart';
 import 'achievements_screen.dart';
@@ -16,26 +17,16 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentPage = 1;
   double _indicatorPosition = 1.0;
 
-  int coins = 0; // текущие монеты
-
   @override
   void initState() {
     super.initState();
-
     _pageController.addListener(() {
       setState(() {
-        _indicatorPosition =
-            ((_pageController.page ?? _currentPage).clamp(0.0, 2.0)).toDouble();
+        _indicatorPosition = ((_pageController.page ?? _currentPage).clamp(
+          0.0,
+          2.0,
+        )).toDouble();
       });
-    });
-
-    _loadCoins();
-  }
-
-  Future<void> _loadCoins() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      coins = prefs.getInt('coins') ?? 0;
     });
   }
 
@@ -53,16 +44,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const icons = [
-      Icons.shop,
-      Icons.map_rounded,
-      Icons.workspace_premium,
-    ];
-    const labels = [
-      'Магазин',
-      'Уровни',
-      'Достижения',
-    ];
+    final gameState = context.watch<GameState>();
+
+    const icons = [Icons.shop, Icons.map_rounded, Icons.workspace_premium];
+    const labels = ['Магазин', 'Уровни', 'Достижения'];
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 67, 91, 112),
@@ -72,16 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           const ShopScreen(),
           const MapScreen(),
-          AchievementsScreen(
-            coins: coins,
-            onCoinsUpdated: (newCoins) async {
-              setState(() {
-                coins = newCoins;
-              });
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setInt('coins', coins);
-            },
-          ),
+          const AchievementsScreen(), // убрали coins и onCoinsUpdated
         ],
       ),
       bottomNavigationBar: _buildBottomBar(icons, labels),
@@ -95,14 +71,12 @@ class _HomeScreenState extends State<HomeScreen> {
         gradient: const LinearGradient(
           colors: [
             Color.fromARGB(255, 74, 87, 110),
-            Color.fromARGB(255, 59, 70, 88)
+            Color.fromARGB(255, 59, 70, 88),
           ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
-        border: const Border(
-          top: BorderSide(color: Colors.black54, width: 1),
-        ),
+        border: const Border(top: BorderSide(color: Colors.black54, width: 1)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.5),
@@ -176,8 +150,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             labels[i],
                             style: TextStyle(
                               color: active ? Colors.white : Colors.white70,
-                              fontWeight:
-                                  active ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: active
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                               fontSize: 13,
                               shadows: active
                                   ? [

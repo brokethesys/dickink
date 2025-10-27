@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../data/game_state.dart';
 import '../widgets/level_node.dart';
 import 'quiz_screen.dart';
 
@@ -13,24 +14,7 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen>
     with SingleTickerProviderStateMixin {
-  bool soundEnabled = true;
-  bool musicEnabled = true;
-  bool vibrationEnabled = true;
-
-  int playerLevel = 1;
-  int currentXP = 0;
-  int coins = 0;
-  int currentLevel = 1;
-  Set<int> completedLevels = {};
-
   late AnimationController _xpController;
-  late Animation<double> _xpAnimation;
-
-  int get xpForNextLevel => 150;
-  int _getCoinsRewardForLevel(int level) {
-    int rewardStage = ((level - 1) ~/ 5) + 1;
-    return rewardStage * 100;
-  }
 
   @override
   void initState() {
@@ -39,10 +23,6 @@ class _MapScreenState extends State<MapScreen>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _xpAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _xpController, curve: Curves.easeOutCubic),
-    );
-    _loadSettings();
   }
 
   @override
@@ -51,42 +31,67 @@ class _MapScreenState extends State<MapScreen>
     super.dispose();
   }
 
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      soundEnabled = prefs.getBool('soundEnabled') ?? true;
-      musicEnabled = prefs.getBool('musicEnabled') ?? true;
-      vibrationEnabled = prefs.getBool('vibrationEnabled') ?? true;
-      playerLevel = prefs.getInt('playerLevel') ?? 1;
-      currentXP = prefs.getInt('currentXP') ?? 0;
-      coins = prefs.getInt('coins') ?? 0;
-      currentLevel = prefs.getInt('currentLevel') ?? 1;
-      completedLevels = (prefs.getStringList('completedLevels') ?? [])
-          .map((e) => int.parse(e))
-          .toSet();
+  // === Построение уровней ===
+  List<Offset> _calculateLevelCenters() {
+    const int totalLevels = 26;
+    const double amplitude = 120;
+    const double period = 250;
+    const double startY = 2000;
+    const double stepY = 150;
+    const double centerX = 200;
+
+    final rand = Random(42);
+
+    return List.generate(totalLevels, (i) {
+      final double y = startY - i * stepY;
+      final double x =
+          centerX + sin(y / period) * amplitude + rand.nextDouble() * 12 - 6;
+      return Offset(x, y);
     });
   }
 
-  Future<void> _saveSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('currentLevel', currentLevel);
-    await prefs.setStringList(
-      'completedLevels',
-      completedLevels.map((e) => e.toString()).toList(),
-    );
-    await prefs.setInt('playerLevel', playerLevel);
-    await prefs.setBool('soundEnabled', soundEnabled);
-    await prefs.setBool('musicEnabled', musicEnabled);
-    await prefs.setBool('vibrationEnabled', vibrationEnabled);
-    await prefs.setInt('currentXP', currentXP);
-    await prefs.setInt('coins', coins);
+  List<Widget> _buildLevelNodes(BuildContext context, GameState state) {
+    final centers = _calculateLevelCenters();
+
+    return List.generate(centers.length, (i) {
+      final c = centers[i];
+      final levelNumber = i + 1;
+
+      final isCompleted = state.completedLevels.contains(levelNumber);
+      final isCurrent = levelNumber == state.currentLevel;
+      final isLocked = levelNumber > state.currentLevel;
+
+      return Positioned(
+        top: c.dy,
+        left: c.dx - 30,
+        child: LevelNode(
+          levelNumber: levelNumber,
+          isCurrent: isCurrent,
+          isLocked: isLocked,
+          isCompleted: isCompleted,
+          onTap: () async {
+            if (isLocked) return;
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => QuizScreen(level: levelNumber)),
+            );
+
+            if (result == true) {
+              state.completeLevel(levelNumber);
+              state.addXP(50);
+            }
+          },
+        ),
+      );
+    });
   }
 
-  void _openSettingsPanel(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    bool localSound = soundEnabled;
-    bool localMusic = musicEnabled;
-    bool localVibration = vibrationEnabled;
+  // === Настройки ===
+  void _openSettingsPanel(BuildContext context) {
+    final state = context.read<GameState>();
+    bool localSound = state.soundEnabled;
+    bool localMusic = state.musicEnabled;
+    bool localVibration = state.vibrationEnabled;
 
     showGeneralDialog(
       context: context,
@@ -97,15 +102,6 @@ class _MapScreenState extends State<MapScreen>
       pageBuilder: (context, anim1, anim2) {
         return StatefulBuilder(
           builder: (context, setLocalState) {
-            Future<void> toggleSetting(String key, bool value) async {
-              await prefs.setBool(key, value);
-              setState(() {
-                if (key == 'soundEnabled') soundEnabled = value;
-                if (key == 'musicEnabled') musicEnabled = value;
-                if (key == 'vibrationEnabled') vibrationEnabled = value;
-              });
-            }
-
             return Align(
               alignment: Alignment.topRight,
               child: Padding(
@@ -146,7 +142,7 @@ class _MapScreenState extends State<MapScreen>
                           value: localSound,
                           onChanged: (v) {
                             setLocalState(() => localSound = v);
-                            toggleSetting('soundEnabled', v);
+                            state.toggleSetting('sound', v);
                           },
                         ),
                         const SizedBox(height: 10),
@@ -156,7 +152,7 @@ class _MapScreenState extends State<MapScreen>
                           value: localMusic,
                           onChanged: (v) {
                             setLocalState(() => localMusic = v);
-                            toggleSetting('musicEnabled', v);
+                            state.toggleSetting('music', v);
                           },
                         ),
                         const SizedBox(height: 10),
@@ -166,7 +162,7 @@ class _MapScreenState extends State<MapScreen>
                           value: localVibration,
                           onChanged: (v) {
                             setLocalState(() => localVibration = v);
-                            toggleSetting('vibrationEnabled', v);
+                            state.toggleSetting('vibration', v);
                           },
                         ),
                         const SizedBox(height: 12),
@@ -175,15 +171,7 @@ class _MapScreenState extends State<MapScreen>
 
                         GestureDetector(
                           onTap: () async {
-                            final prefs = await SharedPreferences.getInstance();
-                            await prefs.clear();
-                            setState(() {
-                              playerLevel = 1;
-                              currentXP = 0;
-                              coins = 0;
-                              currentLevel = 1;
-                              completedLevels.clear();
-                            });
+                            await state.resetProgress();
                             if (context.mounted) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -210,9 +198,9 @@ class _MapScreenState extends State<MapScreen>
                                 ),
                               ],
                             ),
-                            child: Row(
+                            child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.refresh, color: Colors.white),
                                 SizedBox(width: 8),
                                 Text(
@@ -230,7 +218,6 @@ class _MapScreenState extends State<MapScreen>
                         Divider(color: Colors.white24),
                         const SizedBox(height: 8),
 
-                        // === Кнопка поддержки ===
                         GestureDetector(
                           onTap: () {
                             Navigator.pop(context);
@@ -262,9 +249,9 @@ class _MapScreenState extends State<MapScreen>
                                 ),
                               ],
                             ),
-                            child: Row(
+                            child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.mail_outline, color: Colors.white),
                                 SizedBox(width: 8),
                                 Text(
@@ -392,125 +379,10 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
-  List<Offset> _calculateLevelCenters() {
-    const int totalLevels = 26;
-    const double amplitude = 120;
-    const double period = 250;
-    const double startY = 2000;
-    const double stepY = 150;
-    const double centerX = 200;
-
-    final rand = Random(42);
-
-    return List.generate(totalLevels, (i) {
-      final double y = startY - i * stepY;
-      final double x =
-          centerX + sin(y / period) * amplitude + rand.nextDouble() * 12 - 6;
-      return Offset(x, y);
-    });
-  }
-
-  List<Widget> _buildLevelNodes(BuildContext context) {
-    final centers = _calculateLevelCenters();
-
-    return List.generate(centers.length, (i) {
-      final c = centers[i];
-      final levelNumber = i + 1;
-
-      final isCompleted = completedLevels.contains(levelNumber);
-      final isCurrent = levelNumber == currentLevel;
-      final isLocked = levelNumber > currentLevel;
-
-      return Positioned(
-        top: c.dy,
-        left: c.dx - 30,
-        child: LevelNode(
-          levelNumber: levelNumber,
-          isCurrent: isCurrent,
-          isLocked: isLocked,
-          isCompleted: isCompleted,
-          onTap: () async {
-            if (isLocked) return;
-
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => QuizScreen(level: levelNumber)),
-            );
-
-            if (result == true) {
-              setState(() {
-                completedLevels.add(levelNumber);
-
-                currentXP += 50;
-
-                while (currentXP >= xpForNextLevel) {
-                  currentXP -= xpForNextLevel;
-                  playerLevel++;
-
-                  // Добавляем монеты за повышение уровня
-                  int reward = _getCoinsRewardForLevel(playerLevel);
-                  coins += reward;
-                }
-
-                if (levelNumber == currentLevel) {
-                  currentLevel++;
-                }
-
-                _saveSettings();
-              });
-            }
-          },
-        ),
-      );
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const double mapHeight = 2200;
-    final double xpProgress = currentXP / xpForNextLevel;
-    _xpController.value = xpProgress.clamp(0.0, 1.0);
-
-    final levelCenters = _calculateLevelCenters();
-    final levelNodes = _buildLevelNodes(context);
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF001B33),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            reverse: true,
-            physics: const ClampingScrollPhysics(),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Image.asset(
-                    'assets/images/new_bg_map.jpg',
-                    fit: BoxFit.fitWidth,
-                    repeat: ImageRepeat.repeatY,
-                    alignment: Alignment.bottomCenter,
-                    filterQuality: FilterQuality.high,
-                  ),
-                ),
-                SizedBox(
-                  height: mapHeight,
-                  child: CustomPaint(
-                    painter: MapPathPainter(levelCenters),
-                    child: Stack(children: levelNodes),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _topHUD(),
-        ],
-      ),
-    );
-  }
-
-  Widget _topHUD() {
+  // === HUD ===
+  Widget _topHUD(BuildContext context, GameState state) {
     const double barHeight = 46;
-    final xpRatio = currentXP / xpForNextLevel;
+    final xpRatio = state.currentXP / state.xpForNextLevel;
 
     return Positioned(
       top: 80,
@@ -563,7 +435,7 @@ class _MapScreenState extends State<MapScreen>
                   ),
                   Center(
                     child: Text(
-                      '$currentXP / $xpForNextLevel',
+                      '${state.currentXP} / ${state.xpForNextLevel}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -587,7 +459,7 @@ class _MapScreenState extends State<MapScreen>
                       ),
                       child: Center(
                         child: Text(
-                          '$playerLevel',
+                          '${state.playerLevel}',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w900,
@@ -604,7 +476,7 @@ class _MapScreenState extends State<MapScreen>
           const SizedBox(width: 14),
           _squareButton(
             imageAsset: 'assets/images/coin.png',
-            label: coins.toString(),
+            label: state.coins.toString(),
             color: Colors.amber.shade700,
             onTap: () {},
           ),
@@ -671,6 +543,48 @@ class _MapScreenState extends State<MapScreen>
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<GameState>();
+    const double mapHeight = 2200;
+
+    final levelCenters = _calculateLevelCenters();
+    final levelNodes = _buildLevelNodes(context, state);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF001B33),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            reverse: true,
+            physics: const ClampingScrollPhysics(),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/images/new_bg_map.jpg',
+                    fit: BoxFit.fitWidth,
+                    repeat: ImageRepeat.repeatY,
+                    alignment: Alignment.bottomCenter,
+                    filterQuality: FilterQuality.high,
+                  ),
+                ),
+                SizedBox(
+                  height: mapHeight,
+                  child: CustomPaint(
+                    painter: MapPathPainter(levelCenters),
+                    child: Stack(children: levelNodes),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _topHUD(context, state),
+        ],
+      ),
+    );
+  }
 }
 
 class MapPathPainter extends CustomPainter {
@@ -682,9 +596,7 @@ class MapPathPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (centers.isEmpty) return;
 
-    final path = Path();
-    path.moveTo(centers.first.dx, centers.first.dy);
-
+    final path = Path()..moveTo(centers.first.dx, centers.first.dy);
     for (int i = 1; i < centers.length; i++) {
       final p1 = centers[i - 1];
       final p2 = centers[i];

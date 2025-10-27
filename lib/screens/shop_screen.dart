@@ -1,20 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../main.dart'; // для доступа к currentBackground
+import 'package:provider/provider.dart';
+import '../main.dart'; // для currentBackground
+import '../data/game_state.dart';
 
-class ShopScreen extends StatefulWidget {
+class ShopScreen extends StatelessWidget {
   const ShopScreen({super.key});
 
-  @override
-  State<ShopScreen> createState() => _ShopScreenState();
-}
-
-class _ShopScreenState extends State<ShopScreen> {
-  List<String> ownedBackgrounds = ['blue', 'green', 'purple', 'orange'];
-  String selectedBackground = 'blue';
-  int coins = 0;
-
-  final List<Map<String, dynamic>> backgrounds = [
+  final List<Map<String, dynamic>> backgrounds = const [
     {'id': 'blue', 'color': Colors.blue, 'price': 0},
     {'id': 'green', 'color': Colors.green, 'price': 0},
     {'id': 'purple', 'color': Colors.purple, 'price': 0},
@@ -26,61 +18,65 @@ class _ShopScreenState extends State<ShopScreen> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    _loadShopData();
-  }
+  Widget build(BuildContext context) {
+    final state = context.watch<GameState>();
 
-  Future<void> _loadShopData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      coins = prefs.getInt('coins') ?? 1000;
-      selectedBackground = prefs.getString('selectedBackground') ?? 'blue';
-      ownedBackgrounds =
-          prefs.getStringList('ownedBackgrounds') ?? ['blue', 'green', 'purple', 'orange'];
-    });
-  }
+    final ownedItems = backgrounds
+        .where((bg) => state.ownedBackgrounds.contains(bg['id']))
+        .toList();
+    final lockedItems = backgrounds
+        .where((bg) => !state.ownedBackgrounds.contains(bg['id']))
+        .toList();
 
-  Future<void> _saveShopData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('coins', coins);
-    await prefs.setString('selectedBackground', selectedBackground);
-    await prefs.setStringList('ownedBackgrounds', ownedBackgrounds);
-  }
-
-  void _selectBackground(String id) async {
-    if (!ownedBackgrounds.contains(id)) return;
-    setState(() {
-      selectedBackground = id;
-    });
-    currentBackground.value = id; // ⚡ моментальное применение
-    await _saveShopData();
-  }
-
-  void _buyBackground(String id, int price) async {
-    if (coins >= price) {
-      setState(() {
-        coins -= price;
-        ownedBackgrounds.add(id);
-      });
-      await _saveShopData();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Фон "$id" успешно куплен!'),
-          behavior: SnackBarBehavior.floating,
+    return Scaffold(
+      backgroundColor: const Color(0xFF001B33),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF00264D),
+        centerTitle: true,
+        title: const Text(
+          'Магазин фонов',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Недостаточно монет 💰'),
-          behavior: SnackBarBehavior.floating,
+        actions: [
+          Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: Image.asset('assets/images/coin.png', fit: BoxFit.cover),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${state.coins}',
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 16),
+            ],
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildSection(context, 'Ваши фоны', ownedItems, true),
+            const SizedBox(height: 20),
+            _buildSection(context, 'Недоступные', lockedItems, false),
+          ],
         ),
-      );
-    }
+      ),
+    );
   }
 
-  Widget _buildSection(String title, List<Map<String, dynamic>> items, bool owned) {
+  Widget _buildSection(BuildContext context, String title,
+      List<Map<String, dynamic>> items, bool ownedSection) {
+    final state = context.read<GameState>();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -110,17 +106,36 @@ class _ShopScreenState extends State<ShopScreen> {
           ),
           itemBuilder: (context, index) {
             final bg = items[index];
-            final bool isSelected = selectedBackground == bg['id'];
-            final bool isOwned = ownedBackgrounds.contains(bg['id']);
+            final bool isSelected = state.selectedBackground == bg['id'];
+            final bool isOwned = state.ownedBackgrounds.contains(bg['id']);
             final double progress =
-                (coins / (bg['price'] == 0 ? 1 : bg['price'])).clamp(0, 1).toDouble();
+                (state.coins / (bg['price'] == 0 ? 1 : bg['price']))
+                    .clamp(0, 1)
+                    .toDouble();
 
             return GestureDetector(
               onTap: () {
                 if (isOwned) {
-                  _selectBackground(bg['id']);
+                  state.selectBackground(bg['id']);
+                  currentBackground.value = bg['id'];
                 } else {
-                  _buyBackground(bg['id'], bg['price']);
+                  final success = state.buyBackground(bg['id'], bg['price']);
+                  if (success) {
+                    currentBackground.value = bg['id'];
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Фон "${bg['id']}" успешно куплен!'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Недостаточно монет 💰'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
                 }
               },
               child: Container(
@@ -183,7 +198,7 @@ class _ShopScreenState extends State<ShopScreen> {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
-                                        '$coins/${bg['price']}',
+                                        '${state.coins}/${bg['price']}',
                                         style: const TextStyle(
                                           color: Colors.amberAccent,
                                           fontWeight: FontWeight.bold,
@@ -225,58 +240,6 @@ class _ShopScreenState extends State<ShopScreen> {
           },
         ),
       ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ownedItems =
-        backgrounds.where((bg) => ownedBackgrounds.contains(bg['id'])).toList();
-    final lockedItems =
-        backgrounds.where((bg) => !ownedBackgrounds.contains(bg['id'])).toList();
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF001B33),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF00264D),
-        centerTitle: true,
-        title: const Text(
-          'Магазин фонов',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          Row(
-            children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: Image.asset('assets/images/coin.png', fit: BoxFit.cover),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '$coins',
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(width: 16),
-            ],
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _buildSection('Ваши фоны', ownedItems, true),
-            const SizedBox(height: 20),
-            _buildSection('Недоступные', lockedItems, false),
-          ],
-        ),
-      ),
     );
   }
 }

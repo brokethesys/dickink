@@ -1,120 +1,65 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../data/game_state.dart';
 
-class AchievementsScreen extends StatefulWidget {
-  final int coins;
-  final ValueChanged<int> onCoinsUpdated;
-
-  const AchievementsScreen({
-    super.key,
-    required this.coins,
-    required this.onCoinsUpdated,
-  });
-
-  @override
-  State<AchievementsScreen> createState() => _AchievementsScreenState();
-}
-
-class _AchievementsScreenState extends State<AchievementsScreen>
-    with TickerProviderStateMixin {
-  late int coins;
-
-  List<Map<String, dynamic>> achievements = [
-    {
-      "title": "Пройти 3 уровня",
-      "progress": 3,
-      "goal": 3,
-      "reward": 50,
-      "collected": false,
-    },
-    {
-      "title": "Пройти 5 уровней",
-      "progress": 4,
-      "goal": 5,
-      "reward": 75,
-      "collected": false,
-    },
-    {
-      "title": "Открыть 5 фонов",
-      "progress": 2,
-      "goal": 5,
-      "reward": 100,
-      "collected": false,
-    },
-    {
-      "title": "Заработать 500 монет",
-      "progress": 350,
-      "goal": 500,
-      "reward": 120,
-      "collected": false,
-    },
-    {
-      "title": "Пройти все 10 уровней",
-      "progress": 10,
-      "goal": 10,
-      "reward": 200,
-      "collected": false,
-    },
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    coins = widget.coins;
-    _loadCollectedAchievements();
-  }
-
-  Future<void> _loadCollectedAchievements() async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<String> collected =
-        prefs.getStringList('collectedAchievements') ?? [];
-    setState(() {
-      for (int i = 0; i < achievements.length; i++) {
-        achievements[i]["collected"] = collected.contains(i.toString());
-      }
-    });
-  }
-
-  Future<void> _saveCollectedAchievements() async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<String> collected = [];
-    for (int i = 0; i < achievements.length; i++) {
-      if (achievements[i]["collected"] == true) {
-        collected.add(i.toString());
-      }
-    }
-    await prefs.setStringList('collectedAchievements', collected);
-  }
-
-  void _showCoinPopup(int reward) {
-    final overlay = Overlay.of(context);
-    final entry = OverlayEntry(
-      builder: (context) => Positioned(
-        bottom: 150,
-        left: MediaQuery.of(context).size.width / 2 - 50,
-        child: _AnimatedCoinPopup(reward: reward),
-      ),
-    );
-    overlay.insert(entry);
-    Future.delayed(const Duration(seconds: 2), () => entry.remove());
-  }
-
-  void _collectReward(int index) {
-    final ach = achievements[index];
-    if (ach["collected"] == true) return;
-
-    setState(() {
-      coins += (ach["reward"] as int);
-      ach["collected"] = true;
-    });
-
-    widget.onCoinsUpdated(coins);
-    _showCoinPopup(ach["reward"] as int);
-    _saveCollectedAchievements();
-  }
+class AchievementsScreen extends StatelessWidget {
+  const AchievementsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final gameState = context.watch<GameState>();
+
+    // === Достижения с динамическим прогрессом ===
+    final achievements = [
+      {
+        "title": "Пройти 3 уровня",
+        "progress": gameState.completedLevels.length,
+        "goal": 3,
+        "reward": 50,
+      },
+      {
+        "title": "Пройти 5 уровней",
+        "progress": gameState.completedLevels.length,
+        "goal": 5,
+        "reward": 75,
+      },
+      {
+        "title": "Открыть 5 фонов",
+        "progress": gameState.ownedBackgrounds.length,
+        "goal": 5,
+        "reward": 100,
+      },
+      {
+        "title": "Заработать 500 монет",
+        "progress": gameState.coins,
+        "goal": 500,
+        "reward": 120,
+      },
+      {
+        "title": "Пройти все 10 уровней",
+        "progress": gameState.completedLevels.length,
+        "goal": 10,
+        "reward": 200,
+      },
+    ];
+
+    void collectReward(int index, int reward) {
+      if (!gameState.isAchievementCollected(index)) {
+        gameState.collectAchievement(index, reward);
+
+        final overlay = Overlay.of(context);
+        final entry = OverlayEntry(
+          builder: (context) => Positioned(
+            bottom: 150,
+            left: MediaQuery.of(context).size.width / 2 - 50,
+            child: _AnimatedCoinPopup(reward: reward),
+          ),
+        );
+        overlay.insert(entry);
+        Future.delayed(const Duration(seconds: 2), () => entry.remove());
+      }
+    }
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -147,10 +92,12 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                   itemCount: achievements.length,
                   itemBuilder: (context, index) {
                     final ach = achievements[index];
-                    final double percent =
-                        (ach["progress"] / ach["goal"]).clamp(0.0, 1.0);
-                    final bool completed = percent >= 1.0;
-                    final bool collected = ach["collected"] == true;
+                    final progress = ach["progress"] as int;
+                    final goal = ach["goal"] as int;
+                    final reward = ach["reward"] as int;
+                    final percent = (progress / goal).clamp(0.0, 1.0);
+                    final completed = percent >= 1.0;
+                    final collected = gameState.isAchievementCollected(index);
 
                     return Container(
                       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -177,7 +124,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            ach["title"],
+                            ach["title"] as String,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -190,7 +137,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                               Expanded(
                                 child: GestureDetector(
                                   onTap: completed && !collected
-                                      ? () => _collectReward(index)
+                                      ? () => collectReward(index, reward)
                                       : null,
                                   child: Stack(
                                     children: [
@@ -246,7 +193,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                                                       ),
                                                     )
                                                   : Text(
-                                                      "${ach["progress"]}/${ach["goal"]}",
+                                                      "$progress/$goal",
                                                       style: const TextStyle(
                                                         color: Colors.white,
                                                         fontSize: 13,
@@ -272,7 +219,7 @@ class _AchievementsScreenState extends State<AchievementsScreen>
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    "+${ach["reward"]}",
+                                    "+$reward",
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 16,
