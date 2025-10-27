@@ -33,13 +33,7 @@ class ShopScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFF00264D),
         centerTitle: true,
-        title: const Text(
-          'Магазин фонов',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: outlinedText('Магазин фонов', fontSize: 20),
         actions: [
           Row(
             children: [
@@ -49,11 +43,7 @@ class ShopScreen extends StatelessWidget {
                 child: Image.asset('assets/images/coin.png', fit: BoxFit.cover),
               ),
               const SizedBox(width: 4),
-              Text(
-                '${state.coins}',
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
-              ),
+              outlinedText('${state.coins}', fontSize: 16, fillColor: Colors.white),
               const SizedBox(width: 16),
             ],
           ),
@@ -83,15 +73,7 @@ class ShopScreen extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 12.0),
           child: Center(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
+            child: outlinedText(title, fontSize: 20),
           ),
         ),
         GridView.builder(
@@ -124,14 +106,15 @@ class ShopScreen extends StatelessWidget {
                     currentBackground.value = bg['id'];
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Фон "${bg['id']}" успешно куплен!'),
+                        content: outlinedText('Фон "${bg['id']}" успешно куплен!',
+                            fontSize: 14),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Недостаточно монет 💰'),
+                      SnackBar(
+                        content: outlinedText('Недостаточно монет 💰', fontSize: 14),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -183,28 +166,17 @@ class ShopScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             if (isOwned)
-                              Text(
-                                isSelected ? 'Выбран' : 'Доступен',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              )
+                              outlinedText(isSelected ? 'Выбран' : 'Доступен',
+                                  fontSize: 12, fillColor: Colors.white70)
                             else
                               Column(
                                 children: [
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(
-                                        '${state.coins}/${bg['price']}',
-                                        style: const TextStyle(
-                                          color: Colors.amberAccent,
-                                          fontWeight: FontWeight.bold,
+                                      outlinedText('${state.coins}/${bg['price']}',
                                           fontSize: 12,
-                                        ),
-                                      ),
+                                          fillColor: Colors.amberAccent),
                                       const SizedBox(width: 4),
                                       SizedBox(
                                         width: 16,
@@ -238,6 +210,38 @@ class ShopScreen extends StatelessWidget {
               ),
             );
           },
+        ),
+      ],
+    );
+  }
+
+  // === Вспомогательный виджет текста с обводкой ===
+  Widget outlinedText(String text,
+      {Color fillColor = Colors.white,
+      double fontSize = 16,
+      FontWeight fontWeight = FontWeight.bold}) {
+    return Stack(
+      children: [
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: 'ClashRoyale',
+            fontSize: fontSize,
+            fontWeight: fontWeight,
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.5
+              ..color = Colors.black,
+          ),
+        ),
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: 'ClashRoyale',
+            fontSize: fontSize,
+            fontWeight: fontWeight,
+            color: fillColor,
+          ),
         ),
       ],
     );

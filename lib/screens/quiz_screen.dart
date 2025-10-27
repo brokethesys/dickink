@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart'; // для currentBackground
+import '../data/questions_database.dart'; // <-- импортируем вопросы
 
 class QuizScreen extends StatefulWidget {
   final int level;
@@ -15,28 +16,20 @@ class _QuizScreenState extends State<QuizScreen> {
   bool answered = false;
   Color backgroundColor = Colors.blue;
 
-  final List<Map<String, dynamic>> questions = [
-    {
-      "question": "Какой химический элемент обозначается символом Na?",
-      "options": ["Натрий", "Азот", "Никель", "Неон"],
-      "answer": 0
-    },
-    {
-      "question": "Какая формула воды?",
-      "options": ["H₂O", "CO₂", "O₂", "H₂"],
-      "answer": 0
-    },
-    {
-      "question": "Какой газ является основным компонентом воздуха?",
-      "options": ["Кислород", "Азот", "Углекислый газ", "Водород"],
-      "answer": 1
-    },
-    {
-      "question": "Какой элемент имеет атомный номер 1?",
-      "options": ["Гелий", "Водород", "Литий", "Кислород"],
-      "answer": 1
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    question = chemistryQuestions[widget.level % chemistryQuestions.length];
+
+    backgroundColor = _colorForId(currentBackground.value);
+    currentBackground.addListener(_backgroundListener);
+  }
+
+  @override
+  void dispose() {
+    currentBackground.removeListener(_backgroundListener);
+    super.dispose();
+  }
 
   Color _colorForId(String id) {
     final colorMap = {
@@ -58,35 +51,13 @@ class _QuizScreenState extends State<QuizScreen> {
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    question = questions[widget.level % questions.length];
-
-    // Инициализация фона
-    backgroundColor = _colorForId(currentBackground.value);
-
-    // Подписка на изменения фона
-    currentBackground.addListener(_backgroundListener);
-  }
-
-  @override
-  void dispose() {
-    currentBackground.removeListener(_backgroundListener);
-    super.dispose();
-  }
-
   void _handleAnswerTap(int index) {
     if (answered) return;
-
     setState(() {
       selectedIndex = index;
       answered = true;
     });
-
     final isCorrect = index == question["answer"];
-
-    // Через секунду возвращаем результат
     Future.delayed(const Duration(seconds: 1), () {
       Navigator.pop(context, isCorrect);
     });
@@ -97,12 +68,7 @@ class _QuizScreenState extends State<QuizScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // 🔹 Фон с выбранным цветом
-          Positioned.fill(
-            child: Container(color: backgroundColor),
-          ),
-
-          // 🔹 Градиент для читаемости
+          Positioned.fill(child: Container(color: backgroundColor)),
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -117,14 +83,11 @@ class _QuizScreenState extends State<QuizScreen> {
               ),
             ),
           ),
-
-          // 🔹 Содержимое
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 children: [
-                  // Верхняя панель
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -142,13 +105,12 @@ class _QuizScreenState extends State<QuizScreen> {
                           shadows: [
                             Shadow(color: Colors.black54, blurRadius: 4),
                           ],
-                        ),),
+                        ),
+                      ),
                       const SizedBox(width: 48),
                     ],
                   ),
                   const SizedBox(height: 40),
-
-                  // Вопрос
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
@@ -176,8 +138,6 @@ class _QuizScreenState extends State<QuizScreen> {
                     ),
                   ),
                   const SizedBox(height: 40),
-
-                  // Варианты ответов (2x2)
                   Expanded(
                     child: GridView.builder(
                       physics: const NeverScrollableScrollPhysics(),
@@ -192,11 +152,8 @@ class _QuizScreenState extends State<QuizScreen> {
                       itemBuilder: (context, index) {
                         final isCorrect = index == question["answer"];
                         final isSelected = selectedIndex == index;
-
                         Color borderColor = Colors.white;
                         Color fillColor = Colors.white.withOpacity(0.1);
-
-                        // Подсветка при ответе
                         if (answered && isSelected) {
                           borderColor =
                               isCorrect ? Colors.greenAccent : Colors.redAccent;
@@ -204,7 +161,6 @@ class _QuizScreenState extends State<QuizScreen> {
                         } else if (answered && isCorrect) {
                           borderColor = Colors.greenAccent;
                         }
-
                         return GestureDetector(
                           onTap: () => _handleAnswerTap(index),
                           child: AnimatedContainer(
@@ -225,11 +181,10 @@ class _QuizScreenState extends State<QuizScreen> {
                                     fontWeight: FontWeight.bold,
                                     fontSize: 18,
                                     shadows: [
-                                      Shadow(
-                                          color: Colors.black45,
-                                          blurRadius: 4),
+                                      Shadow(color: Colors.black45, blurRadius: 4),
                                     ],
-                                  ),textAlign: TextAlign.center,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                             ),

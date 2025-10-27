@@ -16,6 +16,8 @@ class _MapScreenState extends State<MapScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _xpController;
 
+  late final ScrollController _scrollController;
+
   @override
   void initState() {
     super.initState();
@@ -23,36 +25,46 @@ class _MapScreenState extends State<MapScreen>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
+
+    _scrollController = ScrollController();
   }
 
   @override
   void dispose() {
     _xpController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   // === Построение уровней ===
-  List<Offset> _calculateLevelCenters() {
-    const int totalLevels = 26;
+  List<Offset> _calculateLevelCenters(Size screenSize) {
+    const int totalLevels = 25;
     const double amplitude = 120;
     const double period = 250;
-    const double startY = 2000;
-    const double stepY = 150;
     const double centerX = 200;
 
     final rand = Random(42);
 
+    // Высота карты = 200 пикселей на уровень + отступы сверху/снизу
+    final double topPadding = 200;
+    final double bottomPadding = 120;
+    final double stepY = 200.0;
+    final double mapHeight =
+        bottomPadding + stepY * (totalLevels - 1) + topPadding;
+
     return List.generate(totalLevels, (i) {
-      final double y = startY - i * stepY;
+      final double y = mapHeight - bottomPadding - i * stepY;
       final double x =
           centerX + sin(y / period) * amplitude + rand.nextDouble() * 12 - 6;
       return Offset(x, y);
     });
   }
 
-  List<Widget> _buildLevelNodes(BuildContext context, GameState state) {
-    final centers = _calculateLevelCenters();
-
+  List<Widget> _buildLevelNodes(
+    BuildContext context,
+    GameState state,
+    List<Offset> centers,
+  ) {
     return List.generate(centers.length, (i) {
       final c = centers[i];
       final levelNumber = i + 1;
@@ -62,7 +74,7 @@ class _MapScreenState extends State<MapScreen>
       final isLocked = levelNumber > state.currentLevel;
 
       return Positioned(
-        top: c.dy,
+        top: c.dy - 30,
         left: c.dx - 30,
         child: LevelNode(
           levelNumber: levelNumber,
@@ -128,14 +140,13 @@ class _MapScreenState extends State<MapScreen>
                         const Text(
                           'Настройки',
                           style: TextStyle(
+                            fontFamily: 'ClashRoyale',
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 16),
-
-                        // === Переключатели ===
                         _buildRoyaleSwitch(
                           icon: Icons.volume_up,
                           label: 'Звук',
@@ -168,7 +179,6 @@ class _MapScreenState extends State<MapScreen>
                         const SizedBox(height: 12),
                         Divider(color: Colors.white24),
                         const SizedBox(height: 8),
-
                         GestureDetector(
                           onTap: () async {
                             await state.resetProgress();
@@ -206,6 +216,7 @@ class _MapScreenState extends State<MapScreen>
                                 Text(
                                   'Сбросить прогресс',
                                   style: TextStyle(
+                                    fontFamily: 'ClashRoyale',
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -217,7 +228,6 @@ class _MapScreenState extends State<MapScreen>
                         const SizedBox(height: 16),
                         Divider(color: Colors.white24),
                         const SizedBox(height: 8),
-
                         GestureDetector(
                           onTap: () {
                             Navigator.pop(context);
@@ -257,6 +267,7 @@ class _MapScreenState extends State<MapScreen>
                                 Text(
                                   'Обратиться в поддержку',
                                   style: TextStyle(
+                                    fontFamily: 'ClashRoyale',
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -295,28 +306,43 @@ class _MapScreenState extends State<MapScreen>
     return GestureDetector(
       onTap: () => onChanged(!value),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
+        duration: const Duration(milliseconds: 150),
         curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
           gradient: value
-              ? const LinearGradient(
-                  colors: [Color(0xFF63B4FF), Color(0xFF3389E5)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+              ? LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0.0, 0.6, 1.0],
+                  colors: [
+                    Colors.lightBlue.shade300, // верхняя, светлая
+                    Colors.lightBlue.shade500, // средняя
+                    Colors.blue.shade800, // нижняя, темная (толстая часть)
+                  ],
                 )
-              : const LinearGradient(
-                  colors: [Color(0xFF999999), Color(0xFF777777)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+              : LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0.0, 0.6, 1.2],
+                  colors: [
+                    Colors.grey.shade400,
+                    Colors.grey.shade500,
+                    Colors.grey.shade700,
+                  ],
                 ),
-          border: Border.all(color: Colors.white, width: 2),
-          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.black, width: 2),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.4),
-              offset: const Offset(0, 4),
-              blurRadius: 6,
+              color: Colors.black.withOpacity(0.5),
+              offset: const Offset(2, 2),
+              blurRadius: 3,
+            ),
+            BoxShadow(
+              color: Colors.white.withOpacity(0.1),
+              offset: const Offset(-1, -1),
+              blurRadius: 1,
             ),
           ],
         ),
@@ -325,31 +351,69 @@ class _MapScreenState extends State<MapScreen>
             Icon(icon, color: Colors.white, size: 24),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black,
-                      offset: Offset(1, 1),
-                      blurRadius: 2,
+              child: Stack(
+                children: [
+                  // Черная обводка
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: 'ClashRoyale',
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      foreground: Paint()
+                        ..style = PaintingStyle.stroke
+                        ..strokeWidth = 1.5
+                        ..color = Colors.black,
                     ),
-                  ],
-                ),
+                  ),
+                  // Основной белый текст
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontFamily: 'ClashRoyale',
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
             ),
             AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutBack,
+              duration: const Duration(milliseconds: 180),
               width: 46,
               height: 26,
               decoration: BoxDecoration(
-                color: value ? Colors.greenAccent.shade400 : Colors.grey,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0.0, 0.6, 1.0],
+                  colors: value
+                      ? [
+                          Colors.greenAccent.shade200,
+                          Colors.green.shade400,
+                          Colors.green.shade700,
+                        ]
+                      : [
+                          Colors.grey.shade400,
+                          Colors.grey.shade500,
+                          Colors.grey.shade700,
+                        ],
+                ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white, width: 1.5),
+                border: Border.all(color: Colors.black, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.5),
+                    offset: const Offset(2, 2),
+                    blurRadius: 2,
+                  ),
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.1),
+                    offset: const Offset(-1, -1),
+                    blurRadius: 1,
+                  ),
+                ],
               ),
               child: AnimatedAlign(
                 duration: const Duration(milliseconds: 180),
@@ -434,16 +498,32 @@ class _MapScreenState extends State<MapScreen>
                     },
                   ),
                   Center(
-                    child: Text(
-                      '${state.currentXP} / ${state.xpForNextLevel}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        shadows: [Shadow(color: Colors.black, blurRadius: 4)],
-                      ),
-                    ),
-                  ),
+  child: Stack(
+    children: [
+      Text(
+        '${state.currentXP} / ${state.xpForNextLevel}',
+        style: TextStyle(
+          fontFamily: 'ClashRoyale',
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          foreground: Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5
+            ..color = Colors.black,
+        ),
+      ),
+      Text(
+        '${state.currentXP} / ${state.xpForNextLevel}',
+        style: const TextStyle(
+          fontFamily: 'ClashRoyale',
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    ],
+  ),
+),
                   Positioned(
                     left: 0,
                     top: 0,
@@ -547,16 +627,18 @@ class _MapScreenState extends State<MapScreen>
   @override
   Widget build(BuildContext context) {
     final state = context.watch<GameState>();
-    const double mapHeight = 2200;
-
-    final levelCenters = _calculateLevelCenters();
-    final levelNodes = _buildLevelNodes(context, state);
+    final screenSize = MediaQuery.of(context).size;
+    final levelCenters = _calculateLevelCenters(screenSize);
+    final levelNodes = _buildLevelNodes(context, state, levelCenters);
+    final mapHeight = (120 + 200 * 24 + 200)
+        .toDouble(); // bottomPadding + stepY*(totalLevels-1) + topPadding
 
     return Scaffold(
       backgroundColor: const Color(0xFF001B33),
       body: Stack(
         children: [
           SingleChildScrollView(
+            controller: _scrollController,
             reverse: true,
             physics: const ClampingScrollPhysics(),
             child: Stack(

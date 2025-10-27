@@ -31,10 +31,11 @@ class GameState extends ChangeNotifier {
     List<String>? ownedBackgrounds,
     this.selectedBackground = 'blue',
     Set<int>? collectedAchievements,
-  })  : completedLevels = completedLevels ?? {},
-        ownedBackgrounds = ownedBackgrounds ??
-            ['blue', 'green', 'purple', 'orange'], // стартовые фоны
-        collectedAchievements = collectedAchievements ?? {};
+  }) : completedLevels = completedLevels ?? {},
+       ownedBackgrounds =
+           ownedBackgrounds ??
+           ['blue', 'green', 'purple', 'orange'], // стартовые фоны
+       collectedAchievements = collectedAchievements ?? {};
 
   // === Константы ===
   int get xpForNextLevel => 150;
@@ -60,11 +61,13 @@ class GameState extends ChangeNotifier {
           .map((e) => int.parse(e))
           .toSet(),
       ownedBackgrounds:
-          prefs.getStringList('ownedBackgrounds') ?? ['blue', 'green', 'purple', 'orange'],
+          prefs.getStringList('ownedBackgrounds') ??
+          ['blue', 'green', 'purple', 'orange'],
       selectedBackground: prefs.getString('selectedBackground') ?? 'blue',
-      collectedAchievements: (prefs.getStringList('collectedAchievements') ?? [])
-          .map((e) => int.parse(e))
-          .toSet(),
+      collectedAchievements:
+          (prefs.getStringList('collectedAchievements') ?? [])
+              .map((e) => int.parse(e))
+              .toSet(),
     );
   }
 
@@ -115,8 +118,12 @@ class GameState extends ChangeNotifier {
   }
 
   void completeLevel(int levelNumber) {
+    // Добавляем уровень в пройденные
     completedLevels.add(levelNumber);
-    if (levelNumber == currentLevel) currentLevel++;
+
+    // Обновляем currentLevel: текущий уровень = максимум из (currentLevel, levelNumber + 1)
+    currentLevel = currentLevel > levelNumber ? currentLevel : levelNumber + 1;
+
     notifyListeners();
     save();
   }
@@ -159,7 +166,8 @@ class GameState extends ChangeNotifier {
   }
 
   // === Достижения ===
-  bool isAchievementCollected(int index) => collectedAchievements.contains(index);
+  bool isAchievementCollected(int index) =>
+      collectedAchievements.contains(index);
 
   void collectAchievement(int index, int reward) {
     if (!collectedAchievements.contains(index)) {

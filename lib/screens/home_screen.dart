@@ -54,11 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: PageView(
         controller: _pageController,
         onPageChanged: _onPageChanged,
-        children: [
-          const ShopScreen(),
-          const MapScreen(),
-          const AchievementsScreen(), // убрали coins и onCoinsUpdated
-        ],
+        children: const [ShopScreen(), MapScreen(), AchievementsScreen()],
       ),
       bottomNavigationBar: _buildBottomBar(icons, labels),
     );
@@ -146,23 +142,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 : [],
                           ),
                           const SizedBox(height: 4),
-                          Text(
+                          outlinedText(
                             labels[i],
-                            style: TextStyle(
-                              color: active ? Colors.white : Colors.white70,
-                              fontWeight: active
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              fontSize: 13,
-                              shadows: active
-                                  ? [
-                                      const Shadow(
-                                        color: Colors.black54,
-                                        blurRadius: 4,
-                                      ),
-                                    ]
-                                  : [],
-                            ),
+                            fontSize: 13,
+                            fillColor: active ? Colors.white : Colors.white70,
                           ),
                         ],
                       ),
@@ -174,6 +157,40 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // === Вспомогательный виджет текста с обводкой ===
+  Widget outlinedText(
+    String text, {
+    Color fillColor = Colors.white,
+    double fontSize = 16,
+    FontWeight fontWeight = FontWeight.bold,
+  }) {
+    return Stack(
+      children: [
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: 'ClashRoyale',
+            fontSize: fontSize,
+            fontWeight: fontWeight,
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.5
+              ..color = Colors.black,
+          ),
+        ),
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: 'ClashRoyale',
+            fontSize: fontSize,
+            fontWeight: fontWeight,
+            color: fillColor,
+          ),
+        ),
+      ],
     );
   }
 }
