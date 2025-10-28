@@ -48,7 +48,7 @@ class _MapScreenState extends State<MapScreen>
     // Высота карты = 200 пикселей на уровень + отступы сверху/снизу
     final double topPadding = 200;
     final double bottomPadding = 120;
-    final double stepY = 200.0;
+    final double stepY = 100.0;
     final double mapHeight =
         bottomPadding + stepY * (totalLevels - 1) + topPadding;
 
@@ -105,12 +105,16 @@ class _MapScreenState extends State<MapScreen>
     bool localMusic = state.musicEnabled;
     bool localVibration = state.vibrationEnabled;
 
+    bool showSettings = false;
+    bool showSubjects = false;
+    String currentSubject = "Химия";
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: 'Настройки',
+      barrierLabel: 'Меню',
       barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 250),
+      transitionDuration: const Duration(milliseconds: 220),
       pageBuilder: (context, anim1, anim2) {
         return StatefulBuilder(
           builder: (context, setLocalState) {
@@ -137,69 +141,20 @@ class _MapScreenState extends State<MapScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          'Настройки',
-                          style: TextStyle(
-                            fontFamily: 'ClashRoyale',
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildRoyaleSwitch(
-                          icon: Icons.volume_up,
-                          label: 'Звук',
-                          value: localSound,
-                          onChanged: (v) {
-                            setLocalState(() => localSound = v);
-                            state.toggleSetting('sound', v);
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        _buildRoyaleSwitch(
-                          icon: Icons.music_note,
-                          label: 'Музыка',
-                          value: localMusic,
-                          onChanged: (v) {
-                            setLocalState(() => localMusic = v);
-                            state.toggleSetting('music', v);
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        _buildRoyaleSwitch(
-                          icon: Icons.vibration,
-                          label: 'Вибрация при ответах',
-                          value: localVibration,
-                          onChanged: (v) {
-                            setLocalState(() => localVibration = v);
-                            state.toggleSetting('vibration', v);
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        Divider(color: Colors.white24),
-                        const SizedBox(height: 8),
+                        // === Кнопка выбора предмета ===
                         GestureDetector(
-                          onTap: () async {
-                            await state.resetProgress();
-                            if (context.mounted) {
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Прогресс успешно сброшен 🧹'),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            }
-                          },
+                          onTap: () => setLocalState(() {
+                            showSubjects = !showSubjects;
+                          }),
                           child: Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
-                                colors: [Colors.redAccent, Colors.red],
+                                colors: [Colors.cyan, Colors.blue],
                               ),
                               borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.black, width: 2),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.5),
@@ -208,38 +163,97 @@ class _MapScreenState extends State<MapScreen>
                                 ),
                               ],
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.refresh, color: Colors.white),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Сбросить прогресс',
-                                  style: TextStyle(
-                                    fontFamily: 'ClashRoyale',
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                const Icon(Icons.school, color: Colors.white),
+                                const SizedBox(width: 8),
+                                _outlinedText(currentSubject, 16),
+                                Icon(
+                                  showSubjects
+                                      ? Icons.expand_less
+                                      : Icons.expand_more,
+                                  color: Colors.white,
                                 ),
                               ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Divider(color: Colors.white24),
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Напиши нам на support@quizgame.app 💌',
-                                ),
-                                behavior: SnackBarBehavior.floating,
+
+                        // === Анимированное раскрытие предметов ===
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOutCubic,
+                          height: showSubjects ? 170 : 0,
+                          margin: const EdgeInsets.only(top: 8),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: SingleChildScrollView(
+                              physics: const NeverScrollableScrollPhysics(),
+                              child: Column(
+                                children: [
+                                  for (var subj in [
+                                    "Химия",
+                                    "Английский язык",
+                                    "Математика",
+                                  ])
+                                    GestureDetector(
+                                      onTap: () {
+                                        setLocalState(() {
+                                          currentSubject = subj;
+                                        });
+                                        // TODO: вызов смены предмета
+                                      },
+                                      child: Container(
+                                        margin: const EdgeInsets.only(top: 6),
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Color(0xFF4FC3F7),
+                                              Color(0xFF0288D1),
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.black,
+                                            width: 2,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(
+                                                0.4,
+                                              ),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: _outlinedText(subj, 16),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
-                            );
-                          },
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // === Кнопка "Настройки" ===
+                        GestureDetector(
+                          onTap: () => setLocalState(() {
+                            showSettings = !showSettings;
+                          }),
                           child: Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -251,6 +265,7 @@ class _MapScreenState extends State<MapScreen>
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.black, width: 2),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.5),
@@ -259,20 +274,185 @@ class _MapScreenState extends State<MapScreen>
                                 ),
                               ],
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.mail_outline, color: Colors.white),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Обратиться в поддержку',
-                                  style: TextStyle(
-                                    fontFamily: 'ClashRoyale',
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                const Icon(Icons.settings, color: Colors.white),
+                                const SizedBox(width: 8),
+                                _outlinedText("Настройки", 16),
+                                Icon(
+                                  showSettings
+                                      ? Icons.expand_less
+                                      : Icons.expand_more,
+                                  color: Colors.white,
                                 ),
                               ],
+                            ),
+                          ),
+                        ),
+
+                        // === Плавное раскрытие настроек ===
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOutCubic,
+                          height: showSettings ? 380 : 0,
+                          margin: const EdgeInsets.only(top: 8),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: SingleChildScrollView(
+                              physics: const NeverScrollableScrollPhysics(),
+                              child: Column(
+                                children: [
+                                  _buildRoyaleSwitch(
+                                    icon: Icons.volume_up,
+                                    label: 'Звук',
+                                    value: localSound,
+                                    onChanged: (v) {
+                                      setLocalState(() => localSound = v);
+                                      state.toggleSetting('sound', v);
+                                    },
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _buildRoyaleSwitch(
+                                    icon: Icons.music_note,
+                                    label: 'Музыка',
+                                    value: localMusic,
+                                    onChanged: (v) {
+                                      setLocalState(() => localMusic = v);
+                                      state.toggleSetting('music', v);
+                                    },
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _buildRoyaleSwitch(
+                                    icon: Icons.vibration,
+                                    label: 'Вибрация при ответах',
+                                    value: localVibration,
+                                    onChanged: (v) {
+                                      setLocalState(() => localVibration = v);
+                                      state.toggleSetting('vibration', v);
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  // === Сброс прогресса ===
+                                  GestureDetector(
+                                    onTap: () async {
+                                      await state.resetProgress();
+                                      if (context.mounted) {
+                                        Navigator.pop(context);
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Прогресс успешно сброшен 🧹',
+                                            ),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            Colors.redAccent,
+                                            Colors.red,
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(
+                                              0.5,
+                                            ),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 3),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.refresh,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          _outlinedText(
+                                            'Сбросить прогресс',
+                                            14,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 10),
+
+                                  // === Обратиться в поддержку ===
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.pop(context);
+                                      // Здесь можно добавить переход или email-отправку
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Свяжитесь с нами: support@eduquiz.app 💬',
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            Colors.lightBlueAccent,
+                                            Colors.blue,
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(
+                                              0.5,
+                                            ),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 3),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.support_agent,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          _outlinedText(
+                                            'Обратиться в поддержку',
+                                            14,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -286,14 +466,47 @@ class _MapScreenState extends State<MapScreen>
         );
       },
       transitionBuilder: (context, anim1, anim2, child) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0.2, -0.1),
-            end: Offset.zero,
-          ).animate(anim1),
-          child: FadeTransition(opacity: anim1, child: child),
+        final curved = CurvedAnimation(
+          parent: anim1,
+          curve: Curves.easeOutBack,
+        );
+        return FadeTransition(
+          opacity: anim1,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.85, end: 1.0).animate(curved),
+            child: child,
+          ),
         );
       },
+    );
+  }
+
+  // === Вспомогательная функция для текста с обводкой ===
+  Widget _outlinedText(String text, double size) {
+    return Stack(
+      children: [
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: 'ClashRoyale',
+            fontSize: size,
+            fontWeight: FontWeight.bold,
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.5
+              ..color = Colors.black,
+          ),
+        ),
+        Text(
+          text,
+          style: TextStyle(
+            fontFamily: 'ClashRoyale',
+            fontSize: size,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
     );
   }
 
@@ -498,32 +711,32 @@ class _MapScreenState extends State<MapScreen>
                     },
                   ),
                   Center(
-  child: Stack(
-    children: [
-      Text(
-        '${state.currentXP} / ${state.xpForNextLevel}',
-        style: TextStyle(
-          fontFamily: 'ClashRoyale',
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          foreground: Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.5
-            ..color = Colors.black,
-        ),
-      ),
-      Text(
-        '${state.currentXP} / ${state.xpForNextLevel}',
-        style: const TextStyle(
-          fontFamily: 'ClashRoyale',
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-    ],
-  ),
-),
+                    child: Stack(
+                      children: [
+                        Text(
+                          '${state.currentXP} / ${state.xpForNextLevel}',
+                          style: TextStyle(
+                            fontFamily: 'ClashRoyale',
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            foreground: Paint()
+                              ..style = PaintingStyle.stroke
+                              ..strokeWidth = 1.5
+                              ..color = Colors.black,
+                          ),
+                        ),
+                        Text(
+                          '${state.currentXP} / ${state.xpForNextLevel}',
+                          style: const TextStyle(
+                            fontFamily: 'ClashRoyale',
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   Positioned(
                     left: 0,
                     top: 0,
@@ -562,7 +775,7 @@ class _MapScreenState extends State<MapScreen>
           ),
           const SizedBox(width: 10),
           _squareButton(
-            icon: Icons.settings,
+            icon: Icons.menu,
             color: const Color(0xFF333333),
             onTap: () => _openSettingsPanel(context),
           ),
@@ -630,7 +843,7 @@ class _MapScreenState extends State<MapScreen>
     final screenSize = MediaQuery.of(context).size;
     final levelCenters = _calculateLevelCenters(screenSize);
     final levelNodes = _buildLevelNodes(context, state, levelCenters);
-    final mapHeight = (120 + 200 * 24 + 200)
+    final mapHeight = (120 + 100 * 24 + 200)
         .toDouble(); // bottomPadding + stepY*(totalLevels-1) + topPadding
 
     return Scaffold(

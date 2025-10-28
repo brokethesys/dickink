@@ -41,8 +41,8 @@ class LevelNode extends StatelessWidget {
                     ? Colors.grey
                     : (isCompleted
                         ? Colors.amber.shade700
-                        : Colors.deepOrangeAccent),
-                width: 3,
+                        : const Color.fromARGB(255, 49, 195, 41)),
+                width: 5,
               ),
               boxShadow: [
                 if (!isLocked)
@@ -63,28 +63,6 @@ class LevelNode extends StatelessWidget {
               ),
             ),
           ),
-
-          // 🔹 Метка-стрелка текущего уровня внутри круга (над цифрой)
-          if (isCurrent)
-            Positioned(
-              top: -3, // немного от верхнего края круга
-              child: Icon(
-                Icons.south,
-                color: const Color.fromARGB(255, 101, 247, 174),
-                size: 30,
-              ),
-            ),
-
-          // 🔒 Замок на закрытых уровнях прямо под цифрой
-          if (isLocked)
-            Positioned(
-              bottom: 6,
-              child: Icon(
-                Icons.lock,
-                color: Colors.grey[700],
-                size: 20,
-              ),
-            ),
         ],
       ),
     );
